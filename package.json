@@ -1,0 +1,15 @@
+{
+  "name": "atlas-merge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Atlas Merge: juego idle de fusionar objetos y restaurar un mapa.",
+  "scripts": {
+    "simular": "node simular.js 60",
+    "www": "node -e \"const fs=require('fs');fs.rmSync('www',{recursive:true,force:true});fs.mkdirSync('www');['index.html','engine.js','manifest.webmanifest','sw.js','icon-192.png','icon-512.png','apple-touch-icon.png'].forEach(f=>fs.copyFileSync(f,'www/'+f))\""
+  },
+  "dependencies": {
+    "@capacitor/android": "6.2.0",
+    "@capacitor/cli": "6.2.0",
+    "@capacitor/core": "6.2.0"
+  }
+}

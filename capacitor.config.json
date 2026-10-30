@@ -1,0 +1,7 @@
+{
+  "appId": "app.atlasmerge.juego",
+  "appName": "Atlas Merge",
+  "webDir": "www",
+  "backgroundColor": "#efe6d2",
+  "android": { "allowMixedContent": false }
+}

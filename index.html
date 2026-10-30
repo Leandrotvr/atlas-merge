@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Atlas Merge</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d2b3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+/* Concepto: mesa de cartografo. Papel de mapa, tinta azul marino, sello rojo para lo importante. */
+:root{
+  --paper:#efe6d2; --paper-2:#e4d8bd; --ink:#1d2b3a; --ink-2:#4a5a6b;
+  --sea:#2f6f8f; --seal:#b3402f; --gold:#c08a1e; --cell:#f6efdd; --line:#c9b98f; --ok:#3d7a4a;
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Atkinson Hyperlegible',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#16202b; --paper-2:#1d2a38; --ink:#eadfc6; --ink-2:#a99f89;
+  --sea:#5fa8c9; --seal:#e0705c; --gold:#e0b04a; --cell:#223243; --line:#35485c; --ok:#6fbf82;}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{background:var(--paper);color:var(--ink);font:16px/1.4 var(--font-body);
+  padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+  display:flex;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:manipulation;overflow-x:hidden}
+.app{width:100%;max-width:460px;display:flex;flex-direction:column;gap:10px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+h1{font:600 26px/1 var(--font-display);margin:0;letter-spacing:-.01em}
+.sub{font-size:12px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.08em}
+.hright{display:flex;align-items:center;gap:8px}
+.combo{font:700 13px var(--font-body);color:#fff;background:var(--seal);border-radius:999px;padding:3px 10px;opacity:0;transform:scale(.8);transition:opacity .15s,transform .15s}
+.combo.on{opacity:1;transform:scale(1)}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+.stat b{display:block;font:600 18px/1.1 var(--font-display);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat span{font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.07em}
+.quest{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.quest[hidden]{display:none}
+.quest .row{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.quest .row b{font-weight:700}.quest .row span{color:var(--ink-2);white-space:nowrap}
+.bar{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sea);width:0;transition:width .25s}
+.map{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.reg{aspect-ratio:1;border-radius:4px;border:1px dashed var(--line);display:grid;place-items:center;font-size:18px;filter:grayscale(1);opacity:.45;background:var(--paper-2);transition:all .3s}
+.reg.on{filter:none;opacity:1;border:1px solid var(--sea);background:color-mix(in srgb,var(--sea) 18%,var(--paper))}
+.boardwrap{position:relative}
+.board{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.boardwrap.shake{animation:shake .25s}
+@keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-3px,1px)}50%{transform:translate(3px,-1px)}75%{transform:translate(-2px,0)}}
+.cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:var(--cell);display:grid;place-items:center;position:relative;font-size:clamp(24px,8vw,36px);cursor:pointer;touch-action:none;transition:background .15s}
+.cell.lock{background:repeating-linear-gradient(45deg,var(--paper-2),var(--paper-2) 6px,var(--paper) 6px,var(--paper) 12px);cursor:default;opacity:.7}
+.cell.sel{outline:3px solid var(--seal);outline-offset:-3px}
+.cell.hint{outline:2px dashed var(--sea);outline-offset:-3px}
+.cell.drop{background:color-mix(in srgb,var(--sea) 25%,var(--cell))}
+.cell.drag .ico{opacity:.25}
+.cell.t5 .ico{filter:drop-shadow(0 0 6px var(--gold))}
+.cell.t8 .ico{filter:drop-shadow(0 0 9px var(--seal))}
+.cell small{position:absolute;right:5px;bottom:2px;font:600 11px var(--font-body);color:var(--ink-2)}
+.ico{display:block;pointer-events:none}
+.pop{animation:pop .25s ease-out}
+@keyframes pop{0%{transform:scale(.55)}65%{transform:scale(1.15)}100%{transform:scale(1)}}
+.fx{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.float{position:absolute;transform:translate(-50%,-50%);font:700 15px var(--font-body);color:var(--gold);text-shadow:0 1px 0 var(--paper),0 0 6px var(--paper);animation:floatUp .9s ease-out forwards;white-space:nowrap}
+.float.big{font-size:20px;color:var(--seal)}
+@keyframes floatUp{0%{opacity:0;margin-top:0}15%{opacity:1}100%{opacity:0;margin-top:-46px}}
+.dot{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--gold);animation:dot .55s ease-out forwards}
+@keyframes dot{from{transform:translate(0,0) scale(1);opacity:1}to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.ghost{position:fixed;z-index:30;pointer-events:none;font-size:42px;transform:translate(-50%,-50%) scale(1.15);filter:drop-shadow(0 6px 6px rgba(0,0,0,.35))}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:600 14px/1.2 var(--font-body);color:var(--ink);background:var(--paper-2);border:1px solid var(--ink);border-radius:8px;padding:11px 8px;cursor:pointer;min-height:48px;transition:transform .08s}
+button:active:not(:disabled){transform:scale(.97)}
+button small{display:block;font-weight:400;color:var(--ink-2);font-size:12px;margin-top:2px}
+button.main{background:var(--seal);color:#fff;border-color:var(--seal)}
+button.main small{color:#fff;opacity:.85}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
+.iconbtn{width:34px;height:34px;min-height:0;padding:0;border-radius:50%;font-size:15px}
+.energywrap{display:flex;flex-direction:column;gap:3px}
+.energywrap .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.07em}
+.energy{height:7px;background:var(--paper-2);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.energy i{display:block;height:100%;background:var(--gold);width:0}
+.msg{min-height:18px;font-size:13px;color:var(--ink-2);text-align:center}
+.foot{font-size:11px;color:var(--ink-2);text-align:center}
+.coach{background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.coach[hidden]{display:none}
+.coach .step{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.75}
+.coach p{margin:0;font-size:15px;line-height:1.35}
+.coach button{align-self:flex-start;background:var(--paper);color:var(--ink);border-color:var(--paper);min-height:40px;padding:8px 14px}
+.pulse{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gold) 80%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+.cell.pulse{border-color:var(--gold)}
+.modal{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 60%,transparent);display:grid;place-items:center;padding:16px;z-index:40}
+.modal[hidden]{display:none}
+.sheet{background:var(--paper);border:1px solid var(--ink);border-radius:12px;max-width:440px;width:100%;max-height:90vh;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.sheet h2{font:600 20px var(--font-display);margin:0}
+.sheet p{margin:0;font-size:15px}
+.sheet ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.chain{display:flex;flex-wrap:wrap;gap:2px;font-size:22px;align-items:center}
+.chain span{font-size:12px;color:var(--ink-2)}
+.toast{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-140%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;z-index:50;transition:transform .3s cubic-bezier(.2,1.4,.4,1);max-width:92vw;text-align:center;pointer-events:none}
+.toast.show{transform:translate(-50%,0)}
+@media (min-width:760px){
+  body{align-items:center}
+  .app{max-width:920px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px;row-gap:10px;align-items:start;grid-template-areas:"head head" "coach coach" "board stats" "board quest" "board map" "board energy" "board actions" "board msg" "board foot"}
+  header{grid-area:head}.coach{grid-area:coach}.boardwrap{grid-area:board}.stats{grid-area:stats}.quest{grid-area:quest}.map{grid-area:map}
+  .energywrap{grid-area:energy}.actions{grid-area:actions}.msg{grid-area:msg}.foot{grid-area:foot}
+}
+@media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot{animation:none}.toast{transition:none}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
+</head>
+<body>
+<main class="app">
+  <header>
+    <div><div class="sub" id="edTxt">Prototipo v1</div><h1>Atlas Merge</h1></div>
+    <div class="hright">
+      <div class="combo" id="combo">Combo ×2</div>
+      <div class="sub" id="boostTxt"></div>
+      <button class="iconbtn" id="bMute" aria-label="Sonido">🔊</button>
+      <button class="iconbtn" id="bHelp" aria-label="Cómo se juega">?</button>
+    </div>
+  </header>
+  <section class="coach" id="coach" hidden aria-live="polite"><div class="step" id="coachStep"></div><p id="coachText"></p><button id="coachBtn" hidden>Entendido</button></section>
+  <section class="stats" aria-label="Estado">
+    <div class="stat"><b id="coins">0</b><span>Monedas</span></div>
+    <div class="stat"><b id="inc">0/s</b><span>Por segundo</span></div>
+    <div class="stat"><b id="pages">0</b><span>Páginas atlas</span></div>
+  </section>
+  <section class="quest" id="quest" hidden aria-label="Misión">
+    <div class="row"><b id="qText"></b><span id="qReward"></span></div>
+    <div class="bar"><i id="qBar"></i></div>
+  </section>
+  <section class="map" id="map" aria-label="Regiones del mapa"></section>
+  <div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div></div>
+  <div class="energywrap"><div class="lbl"><span>⚡ Energía para explorar</span><span id="energyTxt"></span></div><div class="energy"><i id="energyBar"></i></div></div>
+  <div class="msg" id="msg"></div>
+  <section class="actions">
+    <button id="bSpawn" class="main"></button>
+    <button id="bRegion"></button>
+    <button id="bHelper"></button>
+    <button id="bAd">Duplicar ingreso 60 s<small>Anuncio simulado (demo)</small></button>
+  </section>
+  <div class="foot">Guarda solo en este dispositivo · Progreso fuera de línea hasta 8 h</div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-label="Cómo se juega">
+  <h2>Cómo se juega</h2>
+  <ul>
+    <li><b>Explorar</b> te da un objeto nuevo. Cuesta monedas y 1 energía (la barra dorada se recarga sola).</li>
+    <li><b>Fusionar:</b> tocá un objeto y después otro <b>igual</b>, o arrastrá uno sobre el otro. Se convierten en uno mejor que produce más.</li>
+    <li><b>Mover:</b> arrastrá un objeto a una casilla vacía para ordenar el tablero.</li>
+    <li><b>Combo:</b> si fusionás varias veces seguidas (menos de 4 s entre una y otra) el premio sube hasta ×3.</li>
+    <li>Los objetos <b>producen monedas solos</b>, incluso con el juego cerrado (hasta 8 horas).</li>
+    <li><b>Restaurar una región</b> desbloquea casillas y multiplica tu ingreso por 1,5.</li>
+    <li>El <b>ayudante</b> fusiona y explora por vos.</li>
+    <li>Dos 🌍 juntos dan una <b>página del atlas</b> (bonus permanente). Con las 8 regiones podés <b>reeditar el atlas</b>.</li>
+  </ul>
+  <div><b style="font-size:13px">Cadena de objetos (de menor a mayor):</b><div class="chain" id="chain"></div></div>
+  <button id="bClose" class="main">Seguir jugando</button>
+  <button id="bReset">Borrar progreso y empezar de nuevo</button>
+</div></div>
+<div class="modal" id="dlg" hidden><div class="sheet" role="dialog" aria-live="polite"><h2 id="dlgTitle"></h2><p id="dlgBody"></p><div id="dlgBtns" style="display:flex;flex-direction:column;gap:8px"></div></div></div>
+<script src="engine.js"></script>
+<script>
+const E = AtlasEngine, C = E.CFG;
+const ICONS = ['','🎒','🧭','🗺️','🔭','⛵','🎈','✈️','🛰️','🚀','🌍'];
+const NAMES = ['','Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'];
+const KEY = 'atlas-merge-v0';
+let S = E.newState((Math.random() * 1e9) | 0);
+S.mute = false; S.tut = 0; S.q = 0; S.daily = null; S.qBase = { merges: 0, spawns: 0, regions: 0 };
+let sel = -1, lastInput = Date.now(), dlgQueue = [], dlgOpen = false, pendingOffline = null;
+const $ = (id) => document.getElementById(id);
+const boardEl = $('board'), mapEl = $('map'), fx = $('fx'), wrap = $('boardwrap');
+
+/* ---------- utilidades ---------- */
+function fmt(n){
+  if (n < 1000) return n < 10 ? n.toFixed(1).replace(/\.0$/,'') : Math.floor(n).toString();
+  const u = ['k','M','B','T','Q']; let i = -1;
+  while (n >= 1000 && i < u.length - 1){ n /= 1000; i++; }
+  return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + u[i];
+}
+function fmtTime(s){ return s >= 3600 ? (s/3600).toFixed(1).replace('.',',') + ' h' : Math.max(1, Math.round(s/60)) + ' min'; }
+function say(t){ $('msg').textContent = t; }
+function save(){ if (window.__noSave) return; try{ S.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------- sonido y vibracion ---------- */
+let AC = null;
+function audio(){
+  if (S.mute) return null;
+  try{ if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }catch(e){ return null; }
+}
+function tone(f, d, type, vol, slide, delay){
+  const a = audio(); if (!a) return;
+  try{
+    const t = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+    g.gain.setValueAtTime(vol || .08, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + .02);
+  }catch(e){}
+}
+const sfx = {
+  spawn: () => tone(420, .09, 'triangle', .07, 1.6),
+  merge: (t, c) => { const f = 300 * Math.pow(1.122, t * 1.5 + (c || 1)); tone(f, .14, 'sine', .09, 1.5); tone(f * 1.5, .12, 'triangle', .05, 1.3, .05); },
+  error: () => tone(160, .12, 'square', .04, .7),
+  region: () => [523,659,784,1046].forEach((f, i) => tone(f, .25, 'triangle', .08, 1, i * .09)),
+  quest: () => { tone(660, .1, 'sine', .08); tone(990, .18, 'sine', .08, 1, .1); },
+  move: () => tone(330, .05, 'sine', .04)
+};
+function buzz(ms){ if (!S.mute && navigator.vibrate) try{ navigator.vibrate(ms); }catch(e){} }
+
+/* ---------- efectos visuales ---------- */
+function cellCenter(i){ const c = boardEl.children[i]; return { x: c.offsetLeft + c.offsetWidth / 2, y: c.offsetTop + c.offsetHeight / 2 }; }
+function floatText(i, text, cls){
+  const p = cellCenter(i), s = document.createElement('span');
+  s.className = 'float ' + (cls || ''); s.textContent = text; s.style.left = p.x + 'px'; s.style.top = p.y + 'px';
+  fx.appendChild(s); setTimeout(() => s.remove(), 950);
+}
+function burst(i, n){
+  const p = cellCenter(i);
+  for (let k = 0; k < (n || 8); k++){
+    const d = document.createElement('i'); d.className = 'dot';
+    const ang = k / (n || 8) * 6.283 + Math.random() * .5, r = 26 + Math.random() * 30;
+    d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+    d.style.setProperty('--dx', Math.cos(ang) * r + 'px'); d.style.setProperty('--dy', Math.sin(ang) * r + 'px');
+    fx.appendChild(d); setTimeout(() => d.remove(), 600);
+  }
+}
+function shake(){ wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake'); }
+function toast(msg, ms){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms || 2300); }
+
+/* ---------- dialogos en cola ---------- */
+function showDialog(d){ dlgQueue.push(d); if (!dlgOpen) nextDialog(); }
+function nextDialog(){
+  const d = dlgQueue.shift();
+  if (!d){ dlgOpen = false; $('dlg').hidden = true; return; }
+  dlgOpen = true; $('dlg').hidden = false;
+  $('dlgTitle').textContent = d.title; $('dlgBody').innerHTML = d.html;
+  const box = $('dlgBtns'); box.innerHTML = '';
+  d.buttons.forEach(b => {
+    const e = document.createElement('button'); e.textContent = b.label; if (b.cls) e.className = b.cls;
+    e.onclick = () => { try{ b.fn && b.fn(); }catch(x){} render(); tickUI(); save(); nextDialog(); };
+    box.appendChild(e);
+  });
+}
+
+/* ---------- acciones de juego ---------- */
+function doMerge(src, dst){
+  const t0 = S.board[src];
+  if (!E.merge(S, dst, src, true)) return false;
+  const gain = S.lastGain, combo = S.combo, t = S.board[dst];
+  sfx.merge(t0, combo); buzz(t0 >= 5 ? 25 : 10);
+  if (t0 >= C.maxTier){ floatText(dst, '+1 página', 'big'); burst(dst, 12); toast('¡Página del atlas! +2% de ingreso para siempre'); shake(); }
+  else {
+    floatText(dst, '+' + fmt(gain) + (combo > 1 ? ' ×' + (1 + C.comboStep * (combo - 1)).toFixed(2).replace(/0$/,'') : ''), combo >= 3 ? 'big' : '');
+    burst(dst, 6 + Math.min(8, t0)); if (t0 >= 4) shake();
+  }
+  sel = -1; lastInput = Date.now(); S.pop = dst; checkQuest(); render(); return true;
+}
+function moveItem(src, dst){
+  if (dst >= E.cells(S)) return false;
+  const a = S.board[src], b = S.board[dst]; S.board[dst] = a; S.board[src] = b;
+  sfx.move(); sel = -1; S.pop = dst; lastInput = Date.now(); render(); return true;
+}
+function spawnOne(){
+  if (E.emptyCell(S) < 0){ sfx.error(); return say('El tablero está lleno. Fusioná objetos.'); }
+  if (S.energy < 1){ sfx.error(); return say('Sin energía. Se recupera 1 cada 20 s.'); }
+  const idx = E.emptyCell(S);
+  if (!E.spawn(S)){ sfx.error(); return say('Faltan monedas.'); }
+  sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render();
+}
+function tapCell(i){
+  lastInput = Date.now();
+  if (i >= E.cells(S)){ say('Restaurá una región para desbloquear más casillas.'); sfx.error(); return; }
+  if (sel < 0){ if (S.board[i]) sel = i; render(); return; }
+  if (sel === i){ sel = -1; render(); return; }
+  if (S.board[i] && S.board[i] === S.board[sel]){ doMerge(sel, i); return; }
+  if (!S.board[i]){ moveItem(sel, i); return; }
+  sel = i; render();
+}
+
+/* ---------- misiones ---------- */
+function questDef(k){
+  const base = [['merges',3],['spawns',5],['tier',3],['merges',10],['tier',4],['region',1],['merges',25],['tier',5],['spawns',30],['region',1]];
+  if (k < base.length) return base[k];
+  const j = k - base.length, ty = ['merges','tier','spawns','region'][j % 4];
+  return [ty, ty === 'merges' ? 30 + 10 * j : ty === 'tier' ? Math.min(9, 6 + Math.floor(j / 4)) : ty === 'spawns' ? 40 + 10 * j : 1];
+}
+function qText(d){ const [ty, n] = d;
+  return ty === 'merges' ? 'Fusioná ' + n + ' veces' : ty === 'spawns' ? 'Explorá ' + n + ' veces' :
+    ty === 'tier' ? 'Conseguí ' + ICONS[n] + ' ' + NAMES[n] : 'Restaurá una región más'; }
+function qProgress(d){ const [ty, n] = d; let v = 0;
+  if (ty === 'merges') v = S.stats.merges - S.qBase.merges; else if (ty === 'spawns') v = S.stats.spawns - S.qBase.spawns;
+  else if (ty === 'tier') v = Math.max(0, ...S.board); else v = S.regions - S.qBase.regions;
+  return Math.min(n, Math.max(0, v)); }
+const qReward = () => Math.max(40, Math.floor(E.incomePerSec(S) * 180));
+function checkQuest(){
+  if (S.tut < 3) return;
+  const d = questDef(S.q);
+  if (qProgress(d) >= d[1]){
+    const r = qReward(); S.coins += r; S.totalEarned += r; S.q++;
+    S.qBase = { merges: S.stats.merges, spawns: S.stats.spawns, regions: S.regions };
+    sfx.quest(); toast('Misión cumplida: +' + fmt(r) + ' monedas');
+  }
+}
+
+/* ---------- guia paso a paso ---------- */
+const coach = $('coach'), coachStep = $('coachStep'), coachText = $('coachText'), coachBtn = $('coachBtn');
+const TOTAL = 5;
+function clearPulse(){ document.querySelectorAll('.pulse').forEach(e => e.classList.remove('pulse')); }
+function updateCoach(){
+  clearPulse();
+  const items = S.board.filter(Boolean).length, pair = E.findPair(S), maxT = Math.max(0, ...S.board);
+  if (S.tut === 0 && items >= 2) S.tut = 1;
+  if (S.tut <= 1 && (maxT >= 2 || S.pages > 0)) S.tut = 2;
+  if (S.tut === 3 && S.regions >= 1) S.tut = 4;
+  if (S.tut === 4 && S.helper >= 1) S.tut = 5;
+  if (S.tut >= 5 || (S.tut >= 3 && S.regions >= C.regions.length)){ coach.hidden = true; return; }
+  coach.hidden = false; coachBtn.hidden = true;
+  coachStep.textContent = 'Guía · paso ' + Math.min(S.tut + 1, TOTAL) + ' de ' + TOTAL;
+  if (S.tut === 0){
+    coachText.textContent = items === 0 ? 'Bienvenido. Tocá «Explorar» para conseguir tu primer objeto.' : 'Muy bien. Tocá «Explorar» otra vez: necesitás dos objetos iguales.';
+    $('bSpawn').classList.add('pulse');
+  } else if (S.tut === 1){
+    if (pair){
+      coachText.textContent = 'Tenés dos objetos iguales. Tocá uno y después el otro, o arrastrá uno encima del otro.';
+      pair.forEach(i => boardEl.children[i].classList.add('pulse'));
+    } else {
+      coachText.textContent = 'Necesitás dos objetos iguales. Tocá «Explorar» hasta tener un par.';
+      $('bSpawn').classList.add('pulse');
+    }
+  } else if (S.tut === 2){
+    coachText.textContent = '¡Fusión lograda! Un objeto mejor produce más monedas por segundo. Mirá «Por segundo»: tus objetos ganan monedas solos. Si fusionás varias veces seguidas, el premio sube (combo).';
+    coachBtn.hidden = false; coachBtn.textContent = 'Entendido';
+    coachBtn.onclick = () => { S.tut = 3; S.qBase = { merges: S.stats.merges, spawns: S.stats.spawns, regions: S.regions }; render(); save(); };
+  } else if (S.tut === 3){
+    const rc = E.regionCost(S);
+    coachText.textContent = S.coins >= rc ? 'Ya podés restaurar «' + C.regions[0].name + '». Desbloquea casillas y multiplica tu ingreso.' :
+      'Seguí explorando y fusionando. Cuando juntes ' + fmt(rc) + ' monedas podés restaurar tu primera región (tenés ' + fmt(S.coins) + '). Mirá la misión de abajo: da monedas extra.';
+    if (S.coins >= rc) $('bRegion').classList.add('pulse');
+  } else if (S.tut === 4){
+    const hc = E.helperCost(S);
+    coachText.textContent = S.coins >= hc ? 'Ya podés contratar al ayudante: fusiona y explora solo, incluso con el juego cerrado.' :
+      'Próxima meta: ' + fmt(hc) + ' monedas para contratar al ayudante, que juega por vos mientras no estás (tenés ' + fmt(S.coins) + ').';
+    if (S.coins >= hc) $('bHelper').classList.add('pulse');
+  }
+}
+
+/* ---------- construccion de la pantalla ---------- */
+for (let i = 0; i < C.cols * C.rows; i++){
+  const d = document.createElement('div'); d.className = 'cell'; d.setAttribute('role','button'); d.tabIndex = 0; d.dataset.i = i;
+  d.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); tapCell(i); } });
+  boardEl.appendChild(d);
+}
+C.regions.forEach(r => { const d = document.createElement('div'); d.className = 'reg'; d.title = r.name; d.textContent = r.icon; mapEl.appendChild(d); });
+
+// arrastrar y tocar (mouse y tactil)
+let drag = null, ghost = null;
+function cellAt(x, y){ const e = document.elementFromPoint(x, y); const c = e && e.closest ? e.closest('.cell') : null; return c ? +c.dataset.i : -1; }
+function endDrag(){ if (ghost){ ghost.remove(); ghost = null; } document.querySelectorAll('.cell.drag,.cell.drop').forEach(c => c.classList.remove('drag','drop')); drag = null; }
+boardEl.addEventListener('pointerdown', ev => {
+  const c = ev.target.closest('.cell'); if (!c) return; const i = +c.dataset.i;
+  lastInput = Date.now(); audio();
+  drag = { i, x: ev.clientX, y: ev.clientY, moved: false, had: !!S.board[i] && i < E.cells(S), tapOnly: false };
+  try{ c.setPointerCapture(ev.pointerId); }catch(e){}
+});
+boardEl.addEventListener('pointermove', ev => {
+  if (!drag || !drag.had) return;
+  if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) > 8){
+    drag.moved = true; boardEl.children[drag.i].classList.add('drag');
+    ghost = document.createElement('div'); ghost.className = 'ghost'; ghost.textContent = ICONS[S.board[drag.i]]; document.body.appendChild(ghost);
+  }
+  if (drag.moved){
+    ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px';
+    const over = cellAt(ev.clientX, ev.clientY);
+    document.querySelectorAll('.cell.drop').forEach(c => c.classList.remove('drop'));
+    if (over >= 0 && over !== drag.i && over < E.cells(S)) boardEl.children[over].classList.add('drop');
+  }
+});
+boardEl.addEventListener('pointerup', ev => {
+  if (!drag) return; const d = drag, over = cellAt(ev.clientX, ev.clientY); endDrag();
+  if (!d.moved){ tapCell(d.i); return; }
+  if (over < 0 || over === d.i || over >= E.cells(S)) return render();
+  if (S.board[over] && S.board[over] === S.board[d.i]) doMerge(d.i, over); else moveItem(d.i, over);
+});
+boardEl.addEventListener('pointercancel', endDrag);
+
+$('bSpawn').onclick = () => { audio(); spawnOne(); };
+$('bRegion').onclick = () => {
+  audio();
+  if (E.canPrestige(S)){
+    showDialog({ title: 'Reeditar el atlas', html: 'Empezás un mapa nuevo: se reinician regiones, tablero y monedas.<br><b>Conservás</b> las páginas del atlas y el ayudante.<br><b>Ganás</b> +' + Math.round(C.editionBonus * 100) + '% de ingreso permanente. Las regiones cuestan ×' + C.editionCostMult + ' más.',
+      buttons: [{ label: 'Reeditar (edición ' + (S.editions + 2) + ')', cls: 'main', fn: () => { E.prestige(S); S.qBase = { merges: S.stats.merges, spawns: S.stats.spawns, regions: 0 }; sfx.region(); toast('¡Atlas reeditado! Ingreso permanente +' + Math.round(C.editionBonus * 100) + '%'); } }, { label: 'Todavía no' }] });
+    return;
+  }
+  const idx = S.regions;
+  if (E.buyRegion(S)){ sfx.region(); buzz([30,40,30]); toast('¡' + C.regions[idx].name + ' restaurada! Ingreso ×' + C.regionMult); shake(); checkQuest(); render(); }
+  else { sfx.error(); say('Faltan ' + fmt(E.regionCost(S) - S.coins) + ' monedas.'); }
+};
+$('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say('Ayudante mejorado.'); render(); } else { sfx.error(); say('Faltan ' + fmt(E.helperCost(S) - S.coins) + ' monedas.'); } };
+$('bAd').onclick = () => { audio(); S.boost = 60; sfx.quest(); say('x2 de ingreso durante 60 s (en la versión real: anuncio voluntario).'); render(); };
+$('bMute').onclick = () => { S.mute = !S.mute; $('bMute').textContent = S.mute ? '🔇' : '🔊'; if (!S.mute){ audio(); sfx.move(); } save(); };
+const modal = $('modal');
+$('chain').innerHTML = ICONS.slice(1).map((ic, i) => ic + (i < 9 ? '<span>›</span>' : '')).join('');
+$('bHelp').onclick = () => { modal.hidden = false; };
+$('bClose').onclick = () => { modal.hidden = true; };
+modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
+$('bReset').onclick = () => { const b = $('bReset'); if (b.dataset.sure){ try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); } else { b.dataset.sure = 1; b.textContent = 'Tocá otra vez para confirmar'; } };
+
+/* ---------- dibujo ---------- */
+const cache = [];
+function render(){
+  const cs = boardEl.children, n = E.cells(S), popIdx = S.pop; S.pop = -1;
+  for (let i = 0; i < cs.length; i++){
+    const c = cs[i], t = S.board[i], locked = i >= n, key = (locked ? 'L' : '') + t;
+    if (cache[i] !== key){
+      cache[i] = key;
+      c.innerHTML = locked ? '' : t ? '<span class="ico">' + ICONS[t] + '</span><small>' + t + '</small>' : '';
+      c.setAttribute('aria-label', t ? 'Objeto nivel ' + t + ', ' + NAMES[t] : locked ? 'Bloqueada' : 'Vacía');
+    }
+    c.className = 'cell' + (locked ? ' lock' : '') + (i === sel ? ' sel' : '') + (t >= 8 ? ' t8' : t >= 5 ? ' t5' : '');
+    if (sel >= 0 && i !== sel && !locked && t && t === S.board[sel]) c.classList.add('hint');
+    if (i === popIdx && t) c.classList.add('pop');
+  }
+  [...mapEl.children].forEach((d, i) => d.classList.toggle('on', i < S.regions));
+  const rc = E.regionCost(S), hc = E.helperCost(S);
+  const bs = $('bSpawn'), br = $('bRegion'), bh = $('bHelper');
+  bs.innerHTML = 'Explorar <small>' + fmt(E.spawnCost(S)) + ' monedas · 1 energía</small>';
+  bs.disabled = false; bs.style.opacity = (E.emptyCell(S) < 0 || S.energy < 1 || S.coins < E.spawnCost(S)) ? .55 : 1;
+  if (E.canPrestige(S)){ br.className = 'main'; br.disabled = false; br.innerHTML = '¡Reeditar el atlas!<small>+' + Math.round(C.editionBonus * 100) + '% ingreso permanente</small>'; }
+  else { br.className = ''; br.innerHTML = 'Restaurar ' + C.regions[S.regions].name + '<small>' + fmt(rc) + ' monedas · ×' + C.regionMult + ' ingreso</small>'; br.disabled = S.coins < rc; }
+  if (S.helper >= E.helperMax()){ bh.innerHTML = 'Ayudante al máximo<small>Fusiona y explora solo</small>'; bh.disabled = true; }
+  else { bh.innerHTML = (S.helper ? 'Mejorar ayudante' : 'Contratar ayudante') + '<small>' + fmt(hc) + ' monedas · actúa solo</small>'; bh.disabled = S.coins < hc; }
+  $('edTxt').textContent = S.editions ? 'Edición ' + (S.editions + 1) + ' del atlas' : 'Prototipo v1';
+  $('bMute').textContent = S.mute ? '🔇' : '🔊';
+  const q = $('quest'); q.hidden = S.tut < 3;
+  if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = 'Misión: ' + qText(d); $('qReward').textContent = '+' + fmt(qReward()) + ' monedas'; $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
+  updateCoach();
+}
+function tickUI(){
+  $('coins').textContent = fmt(S.coins);
+  $('inc').textContent = fmt(E.incomePerSec(S)) + '/s';
+  $('pages').textContent = S.pages;
+  $('energyBar').style.width = (S.energy / C.energyMax * 100) + '%';
+  $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
+  $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
+  const cb = $('combo'); cb.classList.toggle('on', S.combo > 1 && S.comboT > 0);
+  if (S.combo > 1) cb.textContent = '🔥 Combo ×' + (1 + C.comboStep * (S.combo - 1)).toFixed(2).replace(/0$/,'');
+}
+
+/* ---------- carga, regreso y regalo diario ---------- */
+function todayStr(d){ d = d || new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function offlineReturn(secs){
+  const before = S.coins, used = E.advanceOffline(S, secs), gain = S.coins - before;
+  if (secs >= 300 && gain > 0){
+    showDialog({ title: 'Bienvenido de vuelta', html: 'Estuviste ' + fmtTime(secs) + ' fuera' + (secs > C.offlineCapSec ? ' (el máximo que acumula es ' + fmtTime(C.offlineCapSec) + ')' : '') + '.<br>Tus objetos y el ayudante ganaron <b>' + fmt(gain) + ' monedas</b>.',
+      buttons: [{ label: 'Duplicar la ganancia (anuncio simulado)', cls: 'main', fn: () => { S.coins += gain; S.totalEarned += gain; toast('+' + fmt(gain) + ' monedas extra'); } }, { label: 'Seguir jugando' }] });
+  }
+}
+function dailyCheck(){
+  const t = todayStr(), dd = S.daily || { date: '', streak: 0 };
+  if (dd.date === t) return;
+  const streak = dd.date === todayStr(new Date(Date.now() - 864e5)) ? dd.streak + 1 : 1;
+  const reward = Math.floor(150 * streak + E.incomePerSec(S) * 600);
+  showDialog({ title: 'Regalo diario', html: 'Día <b>' + streak + '</b> de racha. Si volvés mañana, el regalo es mayor.<br><b>+' + fmt(reward) + ' monedas</b> y energía llena.',
+    buttons: [{ label: 'Reclamar', cls: 'main', fn: () => { S.coins += reward; S.totalEarned += reward; S.energy = C.energyMax; S.daily = { date: t, streak }; sfx.quest(); toast('Regalo reclamado'); } }] });
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY); if (!raw) return;
+    const o = JSON.parse(raw), fresh = E.newState(1);
+    Object.assign(S, fresh, { mute: false, tut: 0, q: 0, daily: null, qBase: { merges: 0, spawns: 0, regions: 0 } }, o);
+    if (!S.stats) S.stats = fresh.stats;
+    if (o.savedAt){ const away = (Date.now() - o.savedAt) / 1000; if (away > 30) offlineReturn(away); }
+  }catch(e){}
+}
+
+/* ---------- arranque y bucle ---------- */
+load();
+$('bMute').textContent = S.mute ? '🔇' : '🔊';
+render(); tickUI();
+if (S.tut >= 3) dailyCheck();
+let acc = 0, saveAcc = 0, sig = '', lastTick = Date.now(), hintOn = false;
+function loop(){
+  const now = Date.now(), el = (now - lastTick) / 1000; lastTick = now;
+  if (el > 10) offlineReturn(el); else acc += el;
+  saveAcc += Math.min(el, 5);
+  if (acc >= 0.25){
+    E.advance(S, acc); acc = 0; tickUI(); checkQuest();
+    const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
+    if (s2 !== sig){ sig = s2; render(); }
+    const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
+    if (want !== hintOn){ hintOn = want; [...boardEl.children].forEach(c => c.classList.remove('pulse')); if (want) pair.forEach(i => boardEl.children[i].classList.add('pulse')); }
+  }
+  if (saveAcc >= 5){ save(); saveAcc = 0; }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+window.addEventListener('pagehide', save);
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
