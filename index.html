@@ -144,7 +144,7 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
     <div class="bar"><i id="qBar"></i></div>
   </section>
   <section class="map" id="map" aria-label="Regiones del mapa"></section>
-  <div class="collwrap" id="collwrap" hidden><section class="collection" id="coll" aria-label="Colección de objetos"></section><div class="nexttxt" id="nextTxt"></div></div>
+  <div class="collwrap" id="collwrap" hidden><div class="nexttxt" id="collTitle" style="font-weight:700"></div><section class="collection" id="coll" aria-label="Colección de objetos"></section><div class="nexttxt" id="nextTxt"></div></div>
   <div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div></div>
   <div class="energywrap"><div class="lbl"><span>⚡ Energía para explorar</span><span id="energyTxt"></span></div><div class="energy"><i id="energyBar"></i></div></div>
   <div class="msg" id="msg"></div>
@@ -167,7 +167,7 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
     <li>Los objetos <b>producen monedas solos</b>, incluso con el juego cerrado (hasta 8 horas).</li>
     <li><b>Restaurar una región</b> desbloquea casillas y multiplica tu ingreso por 1,5.</li>
     <li>El <b>ayudante</b> fusiona y explora por vos.</li>
-    <li>Dos 🌍 juntos dan una <b>página del atlas</b> (bonus permanente). Con las 8 regiones podés <b>reeditar el atlas</b>.</li>
+    <li>Dos <span id="hlpTop">🌍</span> juntos dan una <b>página del atlas</b> (bonus permanente). Con las 8 regiones podés <b>reeditar el atlas</b>.</li>
   </ul>
   <div><b style="font-size:13px">Cadena de objetos (de menor a mayor):</b><div class="chain" id="chain"></div></div>
   <button id="bClose" class="main">Seguir jugando</button>
@@ -177,8 +177,22 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
 <script src="engine.js"></script>
 <script>
 const E = AtlasEngine, C = E.CFG;
-const ICONS = ['','🎒','🧭','🗺️','🔭','⛵','🎈','✈️','🛰️','🚀','🌍'];
-const NAMES = ['','Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'];
+const SETS = [
+  { name: 'Exploradores', icons: ['🎒','🧭','🗺️','🔭','⛵','🎈','✈️','🛰️','🚀','🌍'], names: ['Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'] },
+  { name: 'Criaturas', icons: ['🥚','🐛','🐸','🐟','🐢','🦜','🐆','🐘','🐋','🐉'], names: ['Huevo','Oruga','Rana','Pez','Tortuga','Loro','Jaguar','Elefante','Ballena','Dragón'] },
+  { name: 'Maravillas', icons: ['💧','🌊','🏞️','🌳','⛰️','🏔️','🌋','🌅','🌈','🌌'], names: ['Gota','Ola','Río','Bosque','Sierra','Cumbre','Volcán','Amanecer','Arcoíris','Aurora'] },
+];
+const ICONS = [''], NAMES = [''];
+let setIdx = -1;
+const setFor = (ed) => (ed || 0) % SETS.length;
+function applySet(){
+  setIdx = setFor(S.editions);
+  const st = SETS[setIdx];
+  ICONS.length = 1; NAMES.length = 1; ICONS.push(...st.icons); NAMES.push(...st.names);
+  const ch = $('chain'); if (ch) ch.innerHTML = ICONS.slice(1).map((ic, i) => ic + (i < 9 ? '<span>›</span>' : '')).join('');
+  const hp = $('hlpTop'); if (hp) hp.textContent = ICONS[10];
+  const ct = $('collTitle'); if (ct) ct.textContent = 'Colección: ' + st.name;
+}
 const KEY = 'atlas-merge-v0';
 let S = E.newState((Math.random() * 1e9) | 0);
 S.mute = false; S.disc = 0; S.tut = 0; S.q = 0; S.daily = null; S.qBase = { merges: 0, spawns: 0, regions: 0 };
@@ -435,7 +449,7 @@ $('bRegion').onclick = () => {
   audio();
   if (E.canPrestige(S)){
     showDialog({ title: 'Reeditar el atlas', html: 'Empezás un mapa nuevo: se reinician regiones, tablero y monedas.<br><b>Conservás</b> las páginas del atlas y el ayudante.<br><b>Ganás</b> +' + Math.round(C.editionBonus * 100) + '% de ingreso permanente. Las regiones cuestan ×' + C.editionCostMult + ' más.',
-      buttons: [{ label: 'Reeditar (edición ' + (S.editions + 2) + ')', cls: 'main', fn: () => { E.prestige(S); S.qBase = { merges: S.stats.merges, spawns: S.stats.spawns, regions: 0 }; sfx.region(); toast('¡Atlas reeditado! Ingreso permanente +' + Math.round(C.editionBonus * 100) + '%'); } }, { label: 'Todavía no' }] });
+      buttons: [{ label: 'Reeditar (edición ' + (S.editions + 2) + ')', cls: 'main', fn: () => { S.dsets = S.dsets || {}; S.dsets[setIdx] = S.disc; E.prestige(S); applySet(); S.disc = S.dsets[setIdx] || 0; if (S.disc === 0 && setIdx > 0) setTimeout(() => toast('¡Nueva colección: ' + SETS[setIdx].name + '!'), 600); S.qBase = { merges: S.stats.merges, spawns: S.stats.spawns, regions: 0 }; sfx.region(); toast('¡Atlas reeditado! Ingreso permanente +' + Math.round(C.editionBonus * 100) + '%'); } }, { label: 'Todavía no' }] });
     return;
   }
   const idx = S.regions;
@@ -446,7 +460,7 @@ $('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say('A
 $('bAd').onclick = () => { audio(); S.boost = 60; sfx.quest(); say('x2 de ingreso durante 60 s (en la versión real: anuncio voluntario).'); render(); };
 $('bMute').onclick = () => { S.mute = !S.mute; $('bMute').textContent = S.mute ? '🔇' : '🔊'; if (!S.mute){ audio(); sfx.move(); } save(); };
 const modal = $('modal');
-$('chain').innerHTML = ICONS.slice(1).map((ic, i) => ic + (i < 9 ? '<span>›</span>' : '')).join('');
+applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
 $('bClose').onclick = () => { modal.hidden = true; };
 modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
@@ -518,6 +532,7 @@ function load(){
     Object.assign(S, fresh, { mute: false, disc: -1, tut: 0, q: 0, daily: null, qBase: { merges: 0, spawns: 0, regions: 0 } }, o);
     if (!S.stats) S.stats = fresh.stats;
     if (S.disc < 0) S.disc = Math.max(0, ...S.board);
+    applySet();
     if (o.savedAt){ const away = (Date.now() - o.savedAt) / 1000; if (away > 30) offlineReturn(away); }
   }catch(e){}
 }
