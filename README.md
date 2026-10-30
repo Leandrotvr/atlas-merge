@@ -19,6 +19,6 @@ Juego idle de fusionar objetos y restaurar un mapa por regiones. Funciona en el 
 ## Para desarrolladores
 - `index.html` + `engine.js`: el juego (la lógica está separada de la pantalla).
 - `simular.js`: simulador de balance. Ejecutar `node simular.js 60` simula 60 días con cuatro perfiles de jugador.
-- APK de prueba: la receta `.github/workflows/android.yml` lo compila con Capacitor. Se ejecuta desde la pestaña Actions y el APK queda descargable como artefacto.
-
-Prototipo en desarrollo.
+- Compilación: `.github/workflows/android.yml` usa Capacitor 8 (Android API 36). En cada push genera el APK de prueba (`atlas-merge-apk`) y, si están cargados los secretos `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` y `KEY_PASSWORD`, también el AAB firmado para Play Store (`atlas-merge-aab`).
+- `fonts/`: tipografías incluidas en la app (funciona sin conexión).
+- `privacy.html`: política de privacidad. `PLAY-STORE.md`: textos y datos de la ficha de Google Play.

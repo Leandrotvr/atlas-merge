@@ -120,7 +120,11 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
 }
 @media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot,.reveal,.slot.next{animation:none}.toast{transition:none}}
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+@font-face{font-family:'Atkinson Hyperlegible';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Atkinson Hyperlegible';font-weight:700;font-style:normal;font-display:swap;src:url(fonts/atkinson-hyperlegible-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'Fraunces';font-weight:100 900;font-style:normal;font-display:swap;src:url(fonts/fraunces-latin-wght-normal.woff2) format('woff2')}
+</style>
 </head>
 <body>
 <main class="app">
@@ -490,7 +494,7 @@ function render(){
   else { br.className = ''; br.innerHTML = 'Restaurar ' + C.regions[S.regions].name + '<small>' + fmt(rc) + ' monedas · ×' + C.regionMult + ' ingreso</small>'; br.disabled = S.coins < rc; }
   if (S.helper >= E.helperMax()){ bh.innerHTML = 'Ayudante al máximo<small>Fusiona y explora solo</small>'; bh.disabled = true; }
   else { bh.innerHTML = (S.helper ? 'Mejorar ayudante' : 'Contratar ayudante') + '<small>' + fmt(hc) + ' monedas · actúa solo</small>'; bh.disabled = S.coins < hc; }
-  $('edTxt').textContent = S.editions ? 'Edición ' + (S.editions + 1) + ' del atlas' : 'Prototipo v1';
+  $('edTxt').textContent = 'Edición ' + (S.editions + 1) + ' del atlas';
   $('bMute').textContent = S.mute ? '🔇' : '🔊';
   const q = $('quest'); q.hidden = S.tut < 3;
   if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = 'Misión: ' + qText(d); $('qReward').textContent = '+' + fmt(qReward()) + ' monedas'; $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
