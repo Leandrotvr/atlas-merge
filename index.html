@@ -99,15 +99,26 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
 .sheet ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
 .chain{display:flex;flex-wrap:wrap;gap:2px;font-size:22px;align-items:center}
 .chain span{font-size:12px;color:var(--ink-2)}
+.collwrap{display:flex;flex-direction:column;gap:4px}
+.collwrap[hidden]{display:none}
+.collection{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.slot{aspect-ratio:1;border-radius:6px;border:1px dashed var(--line);background:var(--paper-2);display:grid;place-items:center;font-size:clamp(13px,4vw,20px);color:var(--ink-2)}
+.slot.got{border:1px solid var(--sea);background:color-mix(in srgb,var(--sea) 14%,var(--paper));color:inherit}
+.slot.next{border:1px solid var(--gold);color:var(--gold);font-weight:700;animation:glow 1.6s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 40%,transparent)}}
+.nexttxt{font-size:12px;color:var(--ink-2);text-align:center;line-height:1.3}
+.reveal{position:fixed;left:50%;top:38%;font-size:96px;line-height:1;z-index:45;pointer-events:none;animation:reveal 1.7s ease-out forwards;text-align:center;filter:drop-shadow(0 8px 12px rgba(0,0,0,.35))}
+.reveal small{display:block;font:700 18px var(--font-body);color:var(--paper);background:var(--ink);border-radius:999px;padding:4px 14px;margin-top:8px}
+@keyframes reveal{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}22%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-72%) scale(1)}}
 .toast{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-140%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;z-index:50;transition:transform .3s cubic-bezier(.2,1.4,.4,1);max-width:92vw;text-align:center;pointer-events:none}
 .toast.show{transform:translate(-50%,0)}
 @media (min-width:760px){
   body{align-items:center}
-  .app{max-width:920px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px;row-gap:10px;align-items:start;grid-template-areas:"head head" "coach coach" "board stats" "board quest" "board map" "board energy" "board actions" "board msg" "board foot"}
-  header{grid-area:head}.coach{grid-area:coach}.boardwrap{grid-area:board}.stats{grid-area:stats}.quest{grid-area:quest}.map{grid-area:map}
+  .app{max-width:920px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px;row-gap:10px;align-items:start;grid-template-areas:"head head" "coach coach" "board stats" "board quest" "board map" "board coll" "board energy" "board actions" "board msg" "board foot"}
+  header{grid-area:head}.coach{grid-area:coach}.boardwrap{grid-area:board}.stats{grid-area:stats}.quest{grid-area:quest}.map{grid-area:map}.collwrap{grid-area:coll}
   .energywrap{grid-area:energy}.actions{grid-area:actions}.msg{grid-area:msg}.foot{grid-area:foot}
 }
-@media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot{animation:none}.toast{transition:none}}
+@media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot,.reveal,.slot.next{animation:none}.toast{transition:none}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
 </head>
@@ -133,6 +144,7 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
     <div class="bar"><i id="qBar"></i></div>
   </section>
   <section class="map" id="map" aria-label="Regiones del mapa"></section>
+  <div class="collwrap" id="collwrap" hidden><section class="collection" id="coll" aria-label="Colección de objetos"></section><div class="nexttxt" id="nextTxt"></div></div>
   <div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div></div>
   <div class="energywrap"><div class="lbl"><span>⚡ Energía para explorar</span><span id="energyTxt"></span></div><div class="energy"><i id="energyBar"></i></div></div>
   <div class="msg" id="msg"></div>
@@ -169,7 +181,7 @@ const ICONS = ['','🎒','🧭','🗺️','🔭','⛵','🎈','✈️','🛰️'
 const NAMES = ['','Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'];
 const KEY = 'atlas-merge-v0';
 let S = E.newState((Math.random() * 1e9) | 0);
-S.mute = false; S.tut = 0; S.q = 0; S.daily = null; S.qBase = { merges: 0, spawns: 0, regions: 0 };
+S.mute = false; S.disc = 0; S.tut = 0; S.q = 0; S.daily = null; S.qBase = { merges: 0, spawns: 0, regions: 0 };
 let sel = -1, lastInput = Date.now(), dlgQueue = [], dlgOpen = false, pendingOffline = null;
 const $ = (id) => document.getElementById(id);
 const boardEl = $('board'), mapEl = $('map'), fx = $('fx'), wrap = $('boardwrap');
@@ -209,7 +221,7 @@ const sfx = {
   quest: () => { tone(660, .1, 'sine', .08); tone(990, .18, 'sine', .08, 1, .1); },
   move: () => tone(330, .05, 'sine', .04)
 };
-function buzz(ms){ if (!S.mute && navigator.vibrate) try{ navigator.vibrate(ms); }catch(e){} }
+function buzz(ms){ if (!S.mute && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) try{ navigator.vibrate(ms); }catch(e){} }
 
 /* ---------- efectos visuales ---------- */
 function cellCenter(i){ const c = boardEl.children[i]; return { x: c.offsetLeft + c.offsetWidth / 2, y: c.offsetTop + c.offsetHeight / 2 }; }
@@ -257,19 +269,19 @@ function doMerge(src, dst){
     floatText(dst, '+' + fmt(gain) + (combo > 1 ? ' ×' + (1 + C.comboStep * (combo - 1)).toFixed(2).replace(/0$/,'') : ''), combo >= 3 ? 'big' : '');
     burst(dst, 6 + Math.min(8, t0)); if (t0 >= 4) shake();
   }
-  sel = -1; lastInput = Date.now(); S.pop = dst; checkQuest(); render(); return true;
+  sel = -1; lastInput = Date.now(); S.pop = dst; checkDiscovery(); checkQuest(); render(); save(); return true;
 }
 function moveItem(src, dst){
   if (dst >= E.cells(S)) return false;
   const a = S.board[src], b = S.board[dst]; S.board[dst] = a; S.board[src] = b;
-  sfx.move(); sel = -1; S.pop = dst; lastInput = Date.now(); render(); return true;
+  sfx.move(); sel = -1; S.pop = dst; lastInput = Date.now(); render(); save(); return true;
 }
 function spawnOne(){
   if (E.emptyCell(S) < 0){ sfx.error(); return say('El tablero está lleno. Fusioná objetos.'); }
   if (S.energy < 1){ sfx.error(); return say('Sin energía. Se recupera 1 cada 20 s.'); }
   const idx = E.emptyCell(S);
   if (!E.spawn(S)){ sfx.error(); return say('Faltan monedas.'); }
-  sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render();
+  sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render(); save();
 }
 function tapCell(i){
   lastInput = Date.now();
@@ -279,6 +291,37 @@ function tapCell(i){
   if (S.board[i] && S.board[i] === S.board[sel]){ doMerge(sel, i); return; }
   if (!S.board[i]){ moveItem(sel, i); return; }
   sel = i; render();
+}
+
+/* ---------- coleccion y descubrimientos ---------- */
+function showReveal(t){
+  const d = document.createElement('div'); d.className = 'reveal';
+  d.innerHTML = ICONS[t] + '<small>' + NAMES[t] + '</small>'; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1800);
+}
+function checkDiscovery(){
+  const m = Math.max(0, ...S.board);
+  if (m <= S.disc) return;
+  const from = S.disc; S.disc = m;
+  if (m >= 3){
+    const r = Math.max(50, Math.floor(E.incomePerSec(S) * 120));
+    S.coins += r; S.totalEarned += r;
+    showReveal(m); sfx.region(); buzz([20, 30, 20]); shake();
+    toast('¡Descubriste ' + ICONS[m] + ' ' + NAMES[m] + '! +' + fmt(r) + ' monedas');
+  }
+}
+const collEl = $('coll');
+for (let i = 1; i <= 10; i++){ const d = document.createElement('div'); d.className = 'slot'; collEl.appendChild(d); }
+function renderCollection(){
+  $('collwrap').hidden = S.tut < 2;
+  [...collEl.children].forEach((d, k) => {
+    const t = k + 1, got = t <= S.disc, next = t === S.disc + 1;
+    d.className = 'slot' + (got ? ' got' : next ? ' next' : '');
+    d.textContent = got ? ICONS[t] : '?';
+    d.title = got ? NAMES[t] : next ? 'Próximo por descubrir' : 'Sin descubrir';
+  });
+  $('nextTxt').textContent = S.disc >= 10 ? '¡Colección completa! Fusioná dos ' + ICONS[10] + ' para ganar páginas del atlas.' :
+    S.disc >= 1 ? 'Próximo por descubrir: ❓ — fusioná dos ' + ICONS[S.disc] + ' ' + NAMES[S.disc] + ' (' + S.disc + ' de 10 descubiertos)' : '';
 }
 
 /* ---------- misiones ---------- */
@@ -396,10 +439,10 @@ $('bRegion').onclick = () => {
     return;
   }
   const idx = S.regions;
-  if (E.buyRegion(S)){ sfx.region(); buzz([30,40,30]); toast('¡' + C.regions[idx].name + ' restaurada! Ingreso ×' + C.regionMult); shake(); checkQuest(); render(); }
+  if (E.buyRegion(S)){ sfx.region(); buzz([30,40,30]); toast('¡' + C.regions[idx].name + ' restaurada! Ingreso ×' + C.regionMult); shake(); checkQuest(); render(); save(); }
   else { sfx.error(); say('Faltan ' + fmt(E.regionCost(S) - S.coins) + ' monedas.'); }
 };
-$('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say('Ayudante mejorado.'); render(); } else { sfx.error(); say('Faltan ' + fmt(E.helperCost(S) - S.coins) + ' monedas.'); } };
+$('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say('Ayudante mejorado.'); render(); save(); } else { sfx.error(); say('Faltan ' + fmt(E.helperCost(S) - S.coins) + ' monedas.'); } };
 $('bAd').onclick = () => { audio(); S.boost = 60; sfx.quest(); say('x2 de ingreso durante 60 s (en la versión real: anuncio voluntario).'); render(); };
 $('bMute').onclick = () => { S.mute = !S.mute; $('bMute').textContent = S.mute ? '🔇' : '🔊'; if (!S.mute){ audio(); sfx.move(); } save(); };
 const modal = $('modal');
@@ -437,6 +480,7 @@ function render(){
   $('bMute').textContent = S.mute ? '🔇' : '🔊';
   const q = $('quest'); q.hidden = S.tut < 3;
   if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = 'Misión: ' + qText(d); $('qReward').textContent = '+' + fmt(qReward()) + ' monedas'; $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
+  renderCollection();
   updateCoach();
 }
 function tickUI(){
@@ -471,8 +515,9 @@ function load(){
   try{
     const raw = localStorage.getItem(KEY); if (!raw) return;
     const o = JSON.parse(raw), fresh = E.newState(1);
-    Object.assign(S, fresh, { mute: false, tut: 0, q: 0, daily: null, qBase: { merges: 0, spawns: 0, regions: 0 } }, o);
+    Object.assign(S, fresh, { mute: false, disc: -1, tut: 0, q: 0, daily: null, qBase: { merges: 0, spawns: 0, regions: 0 } }, o);
     if (!S.stats) S.stats = fresh.stats;
+    if (S.disc < 0) S.disc = Math.max(0, ...S.board);
     if (o.savedAt){ const away = (Date.now() - o.savedAt) / 1000; if (away > 30) offlineReturn(away); }
   }catch(e){}
 }
@@ -488,7 +533,7 @@ function loop(){
   if (el > 10) offlineReturn(el); else acc += el;
   saveAcc += Math.min(el, 5);
   if (acc >= 0.25){
-    E.advance(S, acc); acc = 0; tickUI(); checkQuest();
+    E.advance(S, acc); acc = 0; tickUI(); checkDiscovery(); checkQuest();
     const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
