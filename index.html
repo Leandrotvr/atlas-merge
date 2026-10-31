@@ -274,6 +274,28 @@ button.main{box-shadow:0 3px 0 #6b2417,0 0 0 1.5px #3c110a}
 @keyframes flashA{from{opacity:1}to{opacity:0}}
 @media (prefers-reduced-motion:reduce){.flash{display:none}}
 </style>
+<style id="v9">
+.dm{background:var(--card);border-radius:12px;padding:8px 12px;box-shadow:0 0 0 1.5px color-mix(in srgb,var(--edge) 70%,transparent),0 3px 0 color-mix(in srgb,var(--edge) 35%,transparent)}
+.dm[hidden]{display:none}
+.dm .dh{display:flex;justify-content:space-between;font-weight:800;font-size:15.5px;color:var(--ink);margin-bottom:6px}
+.dm .dh span{color:var(--ink-2);font-size:14px}
+.dm ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.dm li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;font-size:14.5px;font-weight:700;color:var(--ink)}
+.dm li i{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink-2);display:grid;place-items:center;font-style:normal;font-size:13px}
+.dm li.ok i{background:#2e9a52;border-color:#1c6b37;color:#fff}
+.dm li em{font-style:normal;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.dm li.ok{opacity:.75}
+.dm li.ok b{text-decoration:line-through}
+.streak{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0}
+.streak span{border-radius:8px;padding:6px 0;text-align:center;font-weight:800;font-size:12px;background:color-mix(in srgb,var(--ink) 12%,transparent);color:var(--ink)}
+.streak span.done{background:#2e9a52;color:#fff}
+.streak span.now{background:#ffd978;color:#1a1206;box-shadow:0 0 0 2px #e0a93a;transform:scale(1.08)}
+.streak span small{display:block;font-size:15px}
+.luck{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:61;pointer-events:none;font:800 30px var(--font-body);color:#ffd978;text-shadow:0 2px 0 #7a3b00,0 0 18px #ff9a3c;animation:luckA 1.2s ease-out forwards;white-space:nowrap}
+@keyframes luckA{0%{transform:translate(-50%,-30%) scale(.4);opacity:0}25%{transform:translate(-50%,-50%) scale(1.25);opacity:1}100%{transform:translate(-50%,-110%) scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.luck{animation:none;opacity:1}}
+</style>
+
 
 
 
@@ -299,6 +321,7 @@ button.main{box-shadow:0 3px 0 #6b2417,0 0 0 1.5px #3c110a}
     <div class="stat"><b id="pages">0</b><span>Páginas</span></div>
   </section>
   <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
+  <section class="dm" id="dm" hidden aria-label="Misiones de hoy"><div class="dh"><b>🎯 Misiones de hoy</b><span id="dmCount">0/3</span></div><ul id="dmList"></ul></section>
   <section class="quest" id="quest" hidden aria-label="Misión">
     <div class="row"><b id="qText"></b><span id="qReward"></span></div>
     <div class="bar"><i id="qBar"></i></div>
@@ -502,6 +525,48 @@ function openChest(at){
   document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
   sfx.region(); buzz([20, 30, 20, 30]); toast(msg); if (at !== undefined) burst(at, 14);
 }
+
+/* ---------- misiones diarias + suerte ---------- */
+const DM_DEFS = [
+  { k: 'merges', n: 20, txt: n => 'Fusioná ' + n + ' veces' },
+  { k: 'spawns', n: 25, txt: n => 'Explorá ' + n + ' veces' },
+  { k: 'combo', n: 4, txt: n => 'Lográ un combo ×' + n }
+];
+function dmState(){
+  const t = todayStr();
+  if (!S.dm || S.dm.date !== t) S.dm = { date: t, m0: S.stats.merges, s0: S.stats.spawns, combo: 0, got: [false, false, false], bonus: false };
+  return S.dm;
+}
+function dmProg(i){ const d = dmState(), k = DM_DEFS[i].k; return Math.min(DM_DEFS[i].n, k === 'merges' ? S.stats.merges - d.m0 : k === 'spawns' ? S.stats.spawns - d.s0 : d.combo); }
+function dmCheck(){
+  if (S.tut < 3) return;
+  const d = dmState(), inc = E.incomePerSec(S);
+  DM_DEFS.forEach((df, i) => {
+    if (!d.got[i] && dmProg(i) >= df.n){
+      d.got[i] = true; const r = Math.max(150, Math.floor(inc * 240)); S.coins += r; S.totalEarned += r;
+      sfx.quest(); toast('Misión diaria: +' + fmt(r) + ' monedas');
+    }
+  });
+  if (!d.bonus && d.got.every(Boolean)){
+    d.bonus = true; const r = Math.max(600, Math.floor(inc * 900)); S.coins += r; S.totalEarned += r; S.energy = C.energyMax;
+    sfx.region(); buzz([20, 30, 20, 30, 40]); toast('¡Todas las misiones! +' + fmt(r) + ' y energía llena');
+  }
+}
+function dmUI(){
+  const el = $('dm'); if (!el) return; el.hidden = S.tut < 3; if (el.hidden) return;
+  const d = dmState();
+  $('dmCount').textContent = d.got.filter(Boolean).length + '/3';
+  $('dmList').innerHTML = DM_DEFS.map((df, i) => '<li class="' + (d.got[i] ? 'ok' : '') + '"><i>' + (d.got[i] ? '✓' : '') + '</i><b>' + df.txt(df.n) + '</b><em>' + dmProg(i) + '/' + df.n + '</em></li>').join('');
+}
+function luckyMerge(dst, gain){
+  if (Math.random() > 0.08) return;
+  const mult = Math.random() < 0.2 ? 10 : 4, extra = Math.floor(gain * (mult - 1)) + 20;
+  S.coins += extra; S.totalEarned += extra;
+  const l = document.createElement('div'); l.className = 'luck'; l.textContent = '🍀 ¡SUERTE ×' + mult + '!  +' + fmt(extra);
+  document.body.appendChild(l); setTimeout(() => l.remove(), 1300);
+  const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 600);
+  sfx.region(); buzz([15, 25, 15]); burst(dst, 16);
+}
 /* ---------- acciones de juego ---------- */
 function doMerge(src, dst){
   const t0 = S.board[src];
@@ -514,8 +579,9 @@ function doMerge(src, dst){
     burst(dst, 6 + Math.min(8, t0)); if (t0 >= 4) shake();
     if (t0 >= 5){ const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 600); }
   }
+  dmState().combo = Math.max(dmState().combo, combo); luckyMerge(dst, gain); dmCheck();
   S.chest = (S.chest || 0) + 1; if (S.chest >= CHEST_N){ S.chest = 0; openChest(dst); }
-  sel = -1; lastInput = Date.now(); S.pop = dst; checkDiscovery(); checkQuest(); render(); chestUI(); save(); return true;
+  sel = -1; lastInput = Date.now(); S.pop = dst; checkDiscovery(); checkQuest(); render(); chestUI(); dmUI(); save(); return true;
 }
 function moveItem(src, dst){
   if (dst >= E.cells(S)) return false;
@@ -737,7 +803,7 @@ function tickUI(){
   $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
   $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
   $('bRegion').style.setProperty('--p', Math.min(100, S.coins / Math.max(1, E.regionCost(S)) * 100).toFixed(1) + '%');
-  chestUI();
+  chestUI(); dmCheck(); dmUI();
   const cb = $('combo'); cb.classList.toggle('on', S.combo > 1 && S.comboT > 0);
   if (S.combo > 1) cb.textContent = '🔥 Combo ×' + (1 + C.comboStep * (S.combo - 1)).toFixed(2).replace(/0$/,'');
 }
@@ -755,8 +821,8 @@ function dailyCheck(){
   const t = todayStr(), dd = S.daily || { date: '', streak: 0 };
   if (dd.date === t) return;
   const streak = dd.date === todayStr(new Date(Date.now() - 864e5)) ? dd.streak + 1 : 1;
-  const reward = Math.floor(150 * streak + E.incomePerSec(S) * 600);
-  showDialog({ title: 'Regalo diario', html: 'Día <b>' + streak + '</b> de racha. Si volvés mañana, el regalo es mayor.<br><b>+' + fmt(reward) + ' monedas</b> y energía llena.',
+  const reward = Math.floor((150 * streak + E.incomePerSec(S) * 600) * (((streak - 1) % 7) === 6 ? 3 : 1));
+  showDialog({ title: 'Regalo diario', html: 'Día <b>' + streak + '</b> de racha. Si volvés mañana, el regalo es mayor.<div class="streak">' + [1,2,3,4,5,6,7].map(n => { const cur = ((streak - 1) % 7) + 1; return '<span class="' + (n < cur ? 'done' : n === cur ? 'now' : '') + '"><small>' + (n === 7 ? '🎁' : n < cur ? '✓' : '🔥') + '</small>' + n + '</span>'; }).join('') + '</div>'+(((streak - 1) % 7) === 6 ? '<b>¡Día 7! Premio triple.</b><br>' : '')+'<b>+' + fmt(reward) + ' monedas</b> y energía llena.',
     buttons: [{ label: 'Reclamar', cls: 'main', fn: () => { S.coins += reward; S.totalEarned += reward; S.energy = C.energyMax; S.daily = { date: t, streak }; sfx.quest(); toast('Regalo reclamado'); } }] });
 }
 function load(){
