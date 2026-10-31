@@ -204,6 +204,40 @@ header{position:relative;padding:8px 10px;align-items:center}.hright{flex-shrink
 .stat,.quest{background:color-mix(in srgb,var(--paper) 80%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 @media (prefers-reduced-motion:reduce){.bg.in{animation:none}}
 </style>
+<style id="v6">
+/* v6: letras mas grandes y con mas contraste; estrella fugaz; barra de progreso en Restaurar */
+:root{--ink-2:#34414f}
+@media (prefers-color-scheme:dark){:root{--ink-2:#d2c9b2}}
+body{font-size:17px}
+header,.collwrap,.energywrap,.foot,.msg:not(:empty){background:color-mix(in srgb,var(--paper) 86%,transparent)}
+.stat,.quest{background:color-mix(in srgb,var(--paper) 90%,transparent)}
+.sub{font-size:14px;text-transform:none;letter-spacing:.02em;color:var(--ink-2)}
+h1{font-size:30px}
+.stat b{font-size:24px}
+.stat span{font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink-2);font-weight:700}
+.quest .row{font-size:15.5px}
+.quest .row span{color:var(--ink-2);font-weight:700}
+.nexttxt{font-size:14.5px;color:var(--ink);line-height:1.35}
+.collwrap .nexttxt:first-child{font-size:16px}
+.msg{font-size:15.5px;color:var(--ink)}
+.foot{font-size:13.5px}
+.energywrap .lbl{font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:700}
+button{font-size:16.5px}
+button small{font-size:14px;color:var(--ink-2);font-weight:700}
+button.main small{color:#fff;opacity:1}
+.cell small{font-size:14px;right:7px;bottom:3px}
+.coach p{font-size:17px}.coach .step{font-size:13px}
+.float{font-size:18px}.float.big{font-size:23px}
+.sheet p{font-size:16.5px}.sheet ul{font-size:15.5px}
+.slot{font-size:clamp(15px,4.6vw,22px)}
+button#bRegion:not(.main){background:linear-gradient(90deg,color-mix(in srgb,var(--sea) 38%,transparent) var(--p,0%),transparent var(--p,0%)),linear-gradient(180deg,color-mix(in srgb,var(--paper) 65%,#fff),var(--paper-2))}
+.star{position:fixed;top:var(--sy,30%);left:0;z-index:35;padding:16px;cursor:pointer;transform:translateX(-90px);animation:starFly 7.5s linear forwards;touch-action:manipulation}
+.star span{display:block;font-size:56px;line-height:1;filter:drop-shadow(0 0 14px #ffd23c) drop-shadow(0 0 4px #fff);animation:starPulse .7s ease-in-out infinite alternate}
+@keyframes starFly{0%{transform:translate(-90px,0)}50%{transform:translate(50vw,-26px)}100%{transform:translate(calc(100vw + 40px),10px)}}
+@keyframes starPulse{from{transform:scale(.88) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
+@media (prefers-reduced-motion:reduce){.star{left:var(--sx,40%);transform:none;animation:starStay 9s forwards}.star span{animation:none}@keyframes starStay{0%,85%{opacity:1}100%{opacity:0}}}
+</style>
+
 
 
 </head>
@@ -637,6 +671,7 @@ function tickUI(){
   $('energyBar').style.width = (S.energy / C.energyMax * 100) + '%';
   $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
   $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
+  $('bRegion').style.setProperty('--p', Math.min(100, S.coins / Math.max(1, E.regionCost(S)) * 100).toFixed(1) + '%');
   const cb = $('combo'); cb.classList.toggle('on', S.combo > 1 && S.comboT > 0);
   if (S.combo > 1) cb.textContent = '🔥 Combo ×' + (1 + C.comboStep * (S.combo - 1)).toFixed(2).replace(/0$/,'');
 }
@@ -670,6 +705,27 @@ function load(){
   }catch(e){}
 }
 
+
+/* ---------- estrella fugaz: premio sorpresa que reconoce al que juega ---------- */
+let starT = 25 + Math.random() * 15;
+function spawnStar(){
+  if (document.querySelector('.star')) return;
+  const s = document.createElement('div'); s.className = 'star'; s.setAttribute('role', 'button'); s.tabIndex = 0;
+  s.setAttribute('aria-label', 'Estrella fugaz: tocala para ganar monedas'); s.innerHTML = '<span>🌟</span>';
+  s.style.setProperty('--sy', (14 + Math.random() * 52) + '%'); s.style.setProperty('--sx', (10 + Math.random() * 70) + '%');
+  const take = (ev) => {
+    ev.preventDefault();
+    const r = Math.max(60, Math.floor(E.incomePerSec(S) * (150 + Math.random() * 150)));
+    S.coins += r; S.totalEarned += r; S.energy = Math.min(C.energyMax, S.energy + 3); S.stars = (S.stars || 0) + 1;
+    const b = s.getBoundingClientRect(); s.remove();
+    const d = document.createElement('div'); d.className = 'reveal'; d.style.top = b.top + 'px'; d.style.fontSize = '64px';
+    d.innerHTML = '🌟<small>+' + fmt(r) + '</small>'; document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
+    sfx.quest(); buzz([15, 25, 15]); toast('¡Atrapaste una estrella fugaz! +' + fmt(r) + ' monedas y 3 de energía'); save();
+  };
+  s.addEventListener('pointerdown', take);
+  s.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') take(e); });
+  document.body.appendChild(s); setTimeout(() => s.remove(), 9500);
+}
 /* ---------- arranque y bucle ---------- */
 load();
 $('bMute').textContent = S.mute ? '🔇' : '🔊';
@@ -687,6 +743,7 @@ function loop(){
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
     if (want !== hintOn){ hintOn = want; [...boardEl.children].forEach(c => c.classList.remove('pulse')); if (want) pair.forEach(i => boardEl.children[i].classList.add('pulse')); }
   }
+  if (!window.__noStar && !document.hidden && S.tut >= 3 && !dlgOpen && !document.querySelector('.star')){ starT -= Math.min(el, 2); if (starT <= 0){ spawnStar(); starT = 60 + Math.random() * 50; } }
   if (saveAcc >= 5){ save(); saveAcc = 0; }
   requestAnimationFrame(loop);
 }
