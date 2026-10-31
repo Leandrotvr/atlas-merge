@@ -295,6 +295,14 @@ button.main{box-shadow:0 3px 0 #6b2417,0 0 0 1.5px #3c110a}
 @keyframes luckA{0%{transform:translate(-50%,-30%) scale(.4);opacity:0}25%{transform:translate(-50%,-50%) scale(1.25);opacity:1}100%{transform:translate(-50%,-110%) scale(1);opacity:0}}
 @media (prefers-reduced-motion:reduce){.luck{animation:none;opacity:1}}
 </style>
+<style id="v10">
+.goldbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;background:linear-gradient(90deg,#ffb52e,#ff7a3c);color:#2a1300;font-weight:800;font-size:16px;padding:9px 18px;border-radius:999px;box-shadow:0 0 0 2px #fff3c4,0 4px 18px rgba(255,150,40,.7);pointer-events:none;white-space:nowrap;animation:goldP 1s ease-in-out infinite}
+.goldbar[hidden]{display:none}
+@keyframes goldP{50%{transform:translateX(-50%) scale(1.06)}}
+body.gold::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:40;box-shadow:inset 0 0 70px 14px rgba(255,190,60,.55)}
+@media (prefers-reduced-motion:reduce){.goldbar{animation:none}}
+</style>
+
 
 
 
@@ -566,6 +574,37 @@ function luckyMerge(dst, gain){
   document.body.appendChild(l); setTimeout(() => l.remove(), 1300);
   const f = document.createElement('div'); f.className = 'flash'; document.body.appendChild(f); setTimeout(() => f.remove(), 600);
   sfx.region(); buzz([15, 25, 15]); burst(dst, 16);
+}
+
+/* ---------- hora dorada (evento) + hitos ---------- */
+const goldEl = document.createElement('div'); goldEl.className = 'goldbar'; goldEl.hidden = true; document.body.appendChild(goldEl);
+let goldT = 0, goldNext = 150 + Math.random() * 120;
+function goldStart(){
+  goldT = 45; goldEl.hidden = false; document.body.classList.add('gold');
+  sfx.region(); buzz([20, 30, 20]); toast('🌟 ¡Hora dorada! Ingresos ×2 por 45 s');
+}
+function goldTick(el){
+  if (S.tut < 3 || dlgOpen) return;
+  if (goldT > 0){
+    const inc = E.incomePerSec(S) * Math.min(el, 2); S.coins += inc; S.totalEarned += inc;
+    goldT -= Math.min(el, 2); goldEl.textContent = '🌟 Hora dorada ×2 · ' + Math.max(0, Math.ceil(goldT)) + ' s';
+    if (goldT <= 0){ goldEl.hidden = true; document.body.classList.remove('gold'); goldNext = 240 + Math.random() * 180; }
+  } else if (!document.hidden && !window.__noGold){ goldNext -= Math.min(el, 2); if (goldNext <= 0) goldStart(); }
+}
+const MS_DEFS = [
+  ['m50', s => s.stats.merges >= 50, '50 fusiones', 0.5], ['m250', s => s.stats.merges >= 250, '250 fusiones', 1.5],
+  ['m1000', s => s.stats.merges >= 1000, '1000 fusiones', 5], ['p1', s => s.pages >= 1, 'tu primera página', 1],
+  ['p5', s => s.pages >= 5, '5 páginas', 3], ['p15', s => s.pages >= 15, '15 páginas', 8],
+  ['r1', s => s.regions >= 1, 'tu primera región', 0.8], ['e1', s => s.editions >= 1, 'una edición completa', 6]
+];
+function msCheck(){
+  if (S.tut < 3) return; S.ms = S.ms || {};
+  for (const [k, ok, name, mult] of MS_DEFS){
+    if (!S.ms[k] && ok(S)){
+      S.ms[k] = 1; const r = Math.max(200, Math.floor(E.incomePerSec(S) * 600 * mult)); S.coins += r; S.totalEarned += r;
+      sfx.region(); buzz([20, 30, 20, 30]); toast('🏆 Logro: ' + name + ' · +' + fmt(r)); return;
+    }
+  }
 }
 /* ---------- acciones de juego ---------- */
 function doMerge(src, dst){
@@ -869,6 +908,7 @@ function loop(){
   if (el > 10) offlineReturn(el); else acc += el;
   saveAcc += Math.min(el, 5);
   if (acc >= 0.25){
+    goldTick(acc); msCheck();
     E.advance(S, acc); acc = 0; tickUI(); checkDiscovery(); checkQuest();
     const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
