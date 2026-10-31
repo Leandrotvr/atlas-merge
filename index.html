@@ -237,6 +237,33 @@ button#bRegion:not(.main){background:linear-gradient(90deg,color-mix(in srgb,var
 @keyframes starPulse{from{transform:scale(.88) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
 @media (prefers-reduced-motion:reduce){.star{left:var(--sx,40%);transform:none;animation:starStay 9s forwards}.star span{animation:none}@keyframes starStay{0%,85%{opacity:1}100%{opacity:0}}}
 </style>
+<style id="v7">
+/* v7: maximo contraste: tarjetas solidas, tinta casi negra, bordes marcados; cofre del explorador */
+:root{--ink:#0b1520;--ink-2:#26323f;--card:#fbf6e8;--edge:#0b1520}
+@media (prefers-color-scheme:dark){:root{--ink:#fbf4e0;--ink-2:#e2d9c2;--card:#16222f;--edge:#fbf4e0}}
+header,.collwrap,.energywrap,.foot,.msg:not(:empty),.stat,.quest,.chest{background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 0 0 1.5px color-mix(in srgb,var(--edge) 70%,transparent),0 3px 0 color-mix(in srgb,var(--edge) 35%,transparent)}
+.stat span,.sub,.quest .row span,.nexttxt,.energywrap .lbl,.foot,.msg,button small{color:var(--ink-2)}
+.stat span,.energywrap .lbl,.quest .row b,.nexttxt{font-weight:700}
+.stat b,h1,.quest .row b,.collwrap .nexttxt:first-child{color:var(--ink)}
+h1{font-weight:700}
+.nexttxt{font-size:15px}
+button{color:var(--ink);box-shadow:0 3px 0 color-mix(in srgb,var(--edge) 45%,transparent),0 0 0 1.5px color-mix(in srgb,var(--edge) 70%,transparent)}
+button.main{box-shadow:0 3px 0 #6b2417,0 0 0 1.5px #3c110a}
+.slot{color:var(--ink);font-weight:700}
+.slot.got{background:var(--card)}
+.chest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:10px;row-gap:5px;padding:8px 12px;border-radius:12px}
+.chest[hidden]{display:none}
+.chest .ci{font-size:28px;line-height:1;grid-row:span 2;transition:transform .2s}
+.chest b{font-size:16px;color:var(--ink)}
+.chest span{font-size:15px;font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.chest .bar{grid-column:2 / 4;height:9px;background:color-mix(in srgb,var(--edge) 18%,transparent)}
+.chest .bar i{background:linear-gradient(90deg,#e0a93a,#ff7a3c)}
+.chest.hot .ci{animation:chestShake .5s ease-in-out infinite}
+.chest.hot{box-shadow:0 0 0 2px var(--gold),0 0 16px color-mix(in srgb,var(--gold) 60%,transparent)}
+@keyframes chestShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg) scale(1.1)}75%{transform:rotate(10deg) scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.chest.hot .ci{animation:none}}
+</style>
+
 
 
 
@@ -259,6 +286,7 @@ button#bRegion:not(.main){background:linear-gradient(90deg,color-mix(in srgb,var
     <div class="stat"><b id="inc">0/s</b><span>Por segundo</span></div>
     <div class="stat"><b id="pages">0</b><span>Páginas</span></div>
   </section>
+  <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
   <section class="quest" id="quest" hidden aria-label="Misión">
     <div class="row"><b id="qText"></b><span id="qReward"></span></div>
     <div class="bar"><i id="qBar"></i></div>
@@ -439,6 +467,29 @@ function nextDialog(){
   });
 }
 
+
+/* ---------- cofre del explorador: cada 10 fusiones a mano, premio al azar ---------- */
+const CHEST_N = 10;
+function chestUI(){
+  const n = S.chest || 0, el = $('chest'); if (!el) return;
+  el.hidden = S.tut < 2; $('chestTxt').textContent = n + '/' + CHEST_N;
+  $('chestBar').style.width = (n / CHEST_N * 100) + '%'; el.classList.toggle('hot', n >= CHEST_N - 2);
+}
+function openChest(at){
+  const kind = ['coins', 'energy', 'item'][(Math.random() * 3) | 0], inc = E.incomePerSec(S);
+  const coins = Math.max(120, Math.floor(inc * (200 + Math.random() * 200)));
+  const slot = E.emptyCell(S); let msg;
+  if (kind === 'item' && slot >= 0){
+    const top = Math.max(0, ...S.board), t = Math.max(2, Math.min(6, top - 2));
+    S.board[slot] = t; S.pop = slot; msg = '¡Cofre! Te tocó ' + ICONS[t] + ' ' + NAMES[t];
+  } else if (kind === 'energy'){
+    S.energy = C.energyMax; S.coins += Math.floor(coins / 2); S.totalEarned += Math.floor(coins / 2);
+    msg = '¡Cofre! Energía llena y +' + fmt(Math.floor(coins / 2)) + ' monedas';
+  } else { S.coins += coins; S.totalEarned += coins; msg = '¡Cofre! +' + fmt(coins) + ' monedas'; }
+  const d = document.createElement('div'); d.className = 'reveal'; d.style.fontSize = '84px'; d.innerHTML = '🎁<small>' + msg.replace('¡Cofre! ', '') + '</small>';
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
+  sfx.region(); buzz([20, 30, 20, 30]); toast(msg); if (at !== undefined) burst(at, 14);
+}
 /* ---------- acciones de juego ---------- */
 function doMerge(src, dst){
   const t0 = S.board[src];
@@ -450,7 +501,8 @@ function doMerge(src, dst){
     floatText(dst, '+' + fmt(gain) + (combo > 1 ? ' ×' + (1 + C.comboStep * (combo - 1)).toFixed(2).replace(/0$/,'') : ''), combo >= 3 ? 'big' : '');
     burst(dst, 6 + Math.min(8, t0)); if (t0 >= 4) shake();
   }
-  sel = -1; lastInput = Date.now(); S.pop = dst; checkDiscovery(); checkQuest(); render(); save(); return true;
+  S.chest = (S.chest || 0) + 1; if (S.chest >= CHEST_N){ S.chest = 0; openChest(dst); }
+  sel = -1; lastInput = Date.now(); S.pop = dst; checkDiscovery(); checkQuest(); render(); chestUI(); save(); return true;
 }
 function moveItem(src, dst){
   if (dst >= E.cells(S)) return false;
@@ -672,6 +724,7 @@ function tickUI(){
   $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
   $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
   $('bRegion').style.setProperty('--p', Math.min(100, S.coins / Math.max(1, E.regionCost(S)) * 100).toFixed(1) + '%');
+  chestUI();
   const cb = $('combo'); cb.classList.toggle('on', S.combo > 1 && S.comboT > 0);
   if (S.combo > 1) cb.textContent = '🔥 Combo ×' + (1 + C.comboStep * (S.combo - 1)).toFixed(2).replace(/0$/,'');
 }
