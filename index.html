@@ -576,6 +576,25 @@ function luckyMerge(dst, gain){
   sfx.region(); buzz([15, 25, 15]); burst(dst, 16);
 }
 
+
+/* ---------- musica de fondo generativa (pentatonica suave) ---------- */
+let musicTimer = null, mStep = 0;
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
+function musicNote(){
+  if (S.mute || S.nomusic || document.hidden || !AC || AC.state !== 'running') return;
+  const root = [196, 174.6, 220, 196][((mStep / 8) | 0) % 4];
+  const n = PENTA[(Math.random() * PENTA.length) | 0], f = root * Math.pow(2, n / 12);
+  tone(f, 2.6, 'sine', .018, 1);
+  if (mStep % 8 === 0) tone(root / 2, 4.5, 'sine', .03, 1);
+  if (Math.random() < .35) tone(f * 1.5, 1.8, 'triangle', .008, 1, .25);
+  mStep++;
+}
+function musicSync(){
+  const on = !S.mute && !S.nomusic;
+  if (on && !musicTimer) musicTimer = setInterval(musicNote, 1900);
+  if (!on && musicTimer){ clearInterval(musicTimer); musicTimer = null; }
+}
+document.addEventListener('pointerdown', () => { if (!S.mute) audio(); musicSync(); }, { once: false, passive: true });
 /* ---------- hora dorada (evento) + hitos ---------- */
 const goldEl = document.createElement('div'); goldEl.className = 'goldbar'; goldEl.hidden = true; document.body.appendChild(goldEl);
 let goldT = 0, goldNext = 150 + Math.random() * 120;
@@ -654,6 +673,7 @@ function checkDiscovery(){
   const m = Math.max(0, ...S.board);
   if (m <= S.disc) return;
   const from = S.disc; S.disc = m;
+  albumCheck(m);
   if (m >= 3){
     const r = Math.max(50, Math.floor(E.incomePerSec(S) * 120));
     S.coins += r; S.totalEarned += r;
@@ -661,10 +681,24 @@ function checkDiscovery(){
     toast('¡Descubriste ' + ICONS[m] + ' ' + NAMES[m] + '! +' + fmt(r) + ' monedas');
   }
 }
+
+/* ---------- album de colecciones (meta a largo plazo) ---------- */
+function albumCount(){ const A = S.album || {}; let n = 0; for (const k in A) n += (A[k][5] ? 1 : 0) + (A[k][10] ? 1 : 0); return n; }
+function albumCheck(m){
+  const A = S.album = S.album || {}, row = A[setIdx] = A[setIdx] || {}, nm = SETS[setIdx].name, inc = E.incomePerSec(S);
+  for (const step of [5, 10]){
+    if (m >= step && !row[step]){
+      row[step] = 1; const r = Math.max(400, Math.floor(inc * (step === 5 ? 1500 : 5000))); S.coins += r; S.totalEarned += r;
+      setTimeout(() => { sfx.region(); buzz([20, 30, 20, 30]); toast('📖 Álbum: ' + nm + ' ' + step + '/10 · +' + fmt(r) + ' · sellos ' + albumCount() + '/6'); }, 1400);
+    }
+  }
+  if (albumCount() >= 6 && !A.done){ A.done = 1; const r = Math.floor(inc * 20000) + 5000; S.coins += r; S.totalEarned += r; setTimeout(() => toast('🏅 ¡Álbum completo! +' + fmt(r)), 3200); }
+}
 const collEl = $('coll');
 for (let i = 1; i <= 10; i++){ const d = document.createElement('div'); d.className = 'slot'; collEl.appendChild(d); }
 function renderCollection(){
   $('collwrap').hidden = S.tut < 2;
+  $('collTitle').textContent = 'Colección: ' + SETS[setIdx].name + ' · 📖 ' + albumCount() + '/6';
   [...collEl.children].forEach((d, k) => {
     const t = k + 1, got = t <= S.disc, next = t === S.disc + 1;
     d.className = 'slot' + (got ? ' got' : next ? ' next' : '');
@@ -795,7 +829,13 @@ $('bRegion').onclick = () => {
 };
 $('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say('Ayudante mejorado.'); render(); save(); } else { sfx.error(); say('Faltan ' + fmt(E.helperCost(S) - S.coins) + ' monedas.'); } };
 $('bAd').onclick = () => { audio(); S.boost = 60; sfx.quest(); say('x2 de ingreso durante 60 s (en la versión real: anuncio voluntario).'); render(); };
-$('bMute').onclick = () => { S.mute = !S.mute; $('bMute').textContent = S.mute ? '🔇' : '🔊'; if (!S.mute){ audio(); sfx.move(); } save(); };
+function muteIco(){ $('bMute').textContent = S.mute ? '🔇' : S.nomusic ? '🔉' : '🔊'; }
+$('bMute').onclick = () => {
+  if (!S.mute && !S.nomusic){ S.nomusic = true; }       /* 🔊 -> 🔉 solo efectos */
+  else if (!S.mute){ S.mute = true; }                    /* 🔉 -> 🔇 nada */
+  else { S.mute = false; S.nomusic = false; }            /* 🔇 -> 🔊 todo */
+  muteIco(); if (!S.mute){ audio(); sfx.move(); } musicSync(); save();
+};
 const modal = $('modal');
 applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
@@ -828,7 +868,7 @@ function render(){
   if (S.helper >= E.helperMax()){ bh.innerHTML = 'Ayudante al máximo<small>Fusiona y explora solo</small>'; bh.disabled = true; }
   else { bh.innerHTML = (S.helper ? 'Mejorar ayudante' : 'Contratar ayudante') + '<small>' + fmt(hc) + ' monedas · actúa solo</small>'; bh.disabled = S.coins < hc; }
   $('edTxt').textContent = 'Edición ' + (S.editions + 1) + ' del atlas';
-  $('bMute').textContent = S.mute ? '🔇' : '🔊';
+  muteIco();
   const q = $('quest'); q.hidden = S.tut < 3;
   if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = 'Misión: ' + qText(d); $('qReward').textContent = '+' + fmt(qReward()) + ' monedas'; $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
   renderCollection();
@@ -898,8 +938,10 @@ function spawnStar(){
   document.body.appendChild(s); setTimeout(() => s.remove(), 9500);
 }
 /* ---------- arranque y bucle ---------- */
+let isNew = false; try{ isNew = !localStorage.getItem(KEY); }catch(e){}
 load();
-$('bMute').textContent = S.mute ? '🔇' : '🔊';
+if (isNew && !window.__noStarter && !S.stats.merges && !S.board.some(Boolean)){ S.board[2] = 1; S.board[5] = 1; S.coins = 40; }
+muteIco();
 render(); tickUI();
 if (S.tut >= 3) dailyCheck();
 let acc = 0, saveAcc = 0, sig = '', lastTick = Date.now(), hintOn = false;
