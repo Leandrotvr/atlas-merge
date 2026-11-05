@@ -28,10 +28,10 @@
     helperCostBase: 500, helperCostGrowth: 9,
     pageBonus: 0.02, pageCap: 50,      // cada "pagina del atlas" (fusion de tier 10) da +5% de ingreso
     offlineCapSec: 8 * 3600,
-    energyMax: 50, energyRegen: 0.125,
+    energyMax: 100, energyRegen: 0.25,
     editionCostMult: 1.8, // cada edicion encarece las regiones x1.8 (el ingreso solo sube +50%)
     editionBonus: 0.5,    // cada edicion del atlas (prestigio) suma +50% de ingreso permanente
-    comboWindow: 4, comboStep: 0.25, comboMax: 8,   // fusiones seguidas en menos de 4 s suben el premio   // 1 energia cada 8 s; cada spawn gasta 1
+    comboWindow: 4, comboStep: 0.25, comboMax: 8,   // fusiones seguidas en menos de 4 s suben el premio   // 1 energia cada 4 s; cada spawn gasta 1
   };
 
   function mulberry32(a) {
@@ -45,7 +45,7 @@
 
   function newState(seed) {
     return {
-      coins: 20, energy: 50, editions: 0, combo: 0, comboT: 0, lastGain: 0, stats: { merges: 0, spawns: 0 }, board: new Array(CFG.cols * CFG.rows).fill(0),
+      coins: 20, energy: 100, editions: 0, combo: 0, comboT: 0, lastGain: 0, stats: { merges: 0, spawns: 0 }, board: new Array(CFG.cols * CFG.rows).fill(0),
       regions: 0, helper: 0, pages: 0, helperTimer: 0,
       boost: 0,            // segundos restantes de x2 (anuncio recompensado)
       seed: seed || 1, rngCalls: 0, totalEarned: 0, t: 0,
@@ -149,7 +149,7 @@
       const d = Math.min(STEP, left); left -= d;
       const inc = incomePerSec(s) * d;
       s.coins += inc; s.totalEarned += inc; s.t += d;
-      s.energy = Math.min(CFG.energyMax, s.energy + CFG.energyRegen * d);
+      s.energy = Math.min(CFG.energyMax, s.energy + CFG.energyRegen * d * (s.boost > 0 ? 2 : 1));
       if (s.boost > 0) s.boost = Math.max(0, s.boost - d);
       if (s.comboT > 0) { s.comboT = Math.max(0, s.comboT - d); if (!s.comboT) s.combo = 0; }
       const iv = CFG.helperIntervals[s.helper];
@@ -170,7 +170,7 @@
   function advanceCoarse(s, d) {
     const inc = incomePerSec(s) * d;
     s.coins += inc; s.totalEarned += inc; s.t += d;
-    s.energy = Math.min(CFG.energyMax, s.energy + CFG.energyRegen * d);
+    s.energy = Math.min(CFG.energyMax, s.energy + CFG.energyRegen * d * (s.boost > 0 ? 2 : 1));
     if (s.boost > 0) s.boost = Math.max(0, s.boost - d);
     s.comboT = 0; s.combo = 0;
     const iv = CFG.helperIntervals[s.helper];

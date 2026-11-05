@@ -309,45 +309,99 @@ body.gold::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4
 
 
 
+<style id="v11">
+/* v9: pantalla de juego minima (energia, tablero, botones). Todo lo demas en el menu. */
+html,body{height:100%;overflow:hidden}
+body{height:100dvh;padding:max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));align-items:stretch;font-size:15px}
+.app{height:100%;max-width:520px;gap:8px;min-height:0;display:flex;flex-direction:column;align-items:stretch}
+.top{display:flex;align-items:center;gap:8px;flex:none}
+.iconbtn{width:40px;height:40px;font-size:18px;position:relative;flex:none;min-height:0;padding:0}
+.top .energywrap{flex:1;min-width:0;flex-direction:row;align-items:center;gap:8px;padding:6px 10px;border-radius:12px}
+.top .energywrap .lbl{flex:none;font-size:14px}
+.top .energywrap .lbl span:first-child{display:none}
+.top .energywrap .lbl span:last-child::before{content:"⚡ "}
+.top .energywrap .energy{flex:1;min-width:0}
+.coinchip{flex:none;font-weight:800;font-size:15px;background:var(--card,var(--paper));border-radius:12px;padding:8px 10px;box-shadow:0 0 0 1.5px color-mix(in srgb,var(--edge,var(--line)) 70%,transparent);white-space:nowrap;color:var(--ink)}
+.coinchip b{font-variant-numeric:tabular-nums}
+.bdg{position:absolute;top:-5px;right:-6px;min-width:17px;height:17px;border-radius:9px;background:var(--seal);color:#fff;font:700 10px/17px var(--font-body);font-style:normal;padding:0 3px;text-align:center}
+.bdg:empty{display:none}
+#bMenu.alert::after{content:"";position:absolute;top:-3px;left:-3px;width:11px;height:11px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--paper);animation:glow 1.6s ease-in-out infinite}
+.barea{flex:1;min-height:0;container-type:size;display:grid;place-items:center}
+.boardwrap{width:min(100cqw,125cqh);height:calc(min(100cqw,125cqh)*.8);position:relative}
+.board{width:100%;height:100%;box-sizing:border-box;padding:7px;gap:5px;grid-template-rows:repeat(4,1fr);grid-template-columns:repeat(5,1fr)}
+.cell{aspect-ratio:auto;min-width:0;min-height:0;font-size:calc(min(100cqw,125cqh)/5*.52)}
+.ovl{position:absolute;left:0;right:0;top:-30px;display:flex;justify-content:center;gap:8px;pointer-events:none;z-index:6}
+.ovl .combo{position:static;margin:0;font-size:14px}
+.boostchip{font-size:13px;font-weight:800;color:var(--ink);background:var(--card,var(--paper));border-radius:999px;padding:2px 10px;box-shadow:0 0 0 1.5px var(--gold)}
+.boostchip:empty{display:none}
+.msg{position:absolute;left:8px;right:8px;bottom:8px;z-index:5;text-align:center;min-height:0;padding:4px 8px;font-size:13.5px;border-radius:10px}
+.msg:empty{display:none}
+.actions{gap:6px;flex:none}
+body button{font-size:14px;min-height:46px;padding:5px 6px}
+body button small{font-size:12px;margin-top:1px}
+body .iconbtn{min-height:0}
+.modal{overflow:auto}
+.sheet{max-height:92dvh}
+.mhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mbtns{display:flex;gap:8px}
+.sheet h2{margin:0}
+.sheet .coach,.sheet .chest,.sheet .dm,.sheet .quest,.sheet .collwrap,.sheet .map,.sheet .stats{margin:0;flex:none}
+.sheet .coach[hidden],.sheet .chest[hidden],.sheet .dm[hidden],.sheet .quest[hidden],.sheet .collwrap[hidden]{display:none}
+.sheet .map{display:grid}.sheet .reg{height:40px}
+.sheet .foot{font-size:13px}
+.sheet button{min-height:44px}.sheet .iconbtn{min-height:0}
+@media (min-width:760px){
+  body{align-items:stretch}
+  .app{display:flex;max-width:520px;align-items:stretch;grid-template-columns:none;grid-template-areas:none;column-gap:0}
+}
+@media (max-height:620px){
+  body button{min-height:42px;padding:3px 5px}body button small{display:none}
+}
+.lvlchip{background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 55%,transparent) var(--p,0%),transparent var(--p,0%)),var(--card,var(--paper))}
+.lvlrow{display:flex;align-items:center;gap:8px;flex:none}
+.lvlrow b{font-size:16px;color:var(--ink);white-space:nowrap}
+.lvlrow span{font-size:13px;font-weight:700;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.xpbar{flex:1;height:9px;border-radius:5px;background:color-mix(in srgb,var(--edge,var(--line)) 18%,transparent);overflow:hidden}
+.xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#e0a93a,#ffd978)}
+</style>
 </head>
 <body>
 <div class="bg" id="bg" aria-hidden="true"></div>
 <main class="app">
-  <header>
-    <div><div class="sub" id="edTxt">Prototipo v1</div><h1>Atlas Merge</h1></div>
-    <div class="hright">
-      <div class="combo" id="combo">Combo ×2</div>
-      <div class="sub" id="boostTxt"></div>
-      <button class="iconbtn" id="bMute" aria-label="Sonido">🔊</button>
-      <button class="iconbtn" id="bHelp" aria-label="Cómo se juega">?</button>
-    </div>
-  </header>
-  <section class="coach" id="coach" hidden aria-live="polite"><div class="step" id="coachStep"></div><p id="coachText"></p><button id="coachBtn" hidden>Entendido</button></section>
-  <section class="stats" aria-label="Estado">
-    <div class="stat"><b id="coins">0</b><span>Monedas</span></div>
-    <div class="stat"><b id="inc">0/s</b><span>Por segundo</span></div>
-    <div class="stat"><b id="pages">0</b><span>Páginas</span></div>
-  </section>
-  <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
-  <section class="dm" id="dm" hidden aria-label="Misiones de hoy"><div class="dh"><b>🎯 Misiones de hoy</b><span id="dmCount">0/3</span></div><ul id="dmList"></ul></section>
-  <section class="quest" id="quest" hidden aria-label="Misión">
-    <div class="row"><b id="qText"></b><span id="qReward"></span></div>
-    <div class="bar"><i id="qBar"></i></div>
-  </section>
-  <section class="map" id="map" aria-label="Regiones del mapa"></section>
-  <div class="collwrap" id="collwrap" hidden><div class="nexttxt" id="collTitle" style="font-weight:700"></div><section class="collection" id="coll" aria-label="Colección de objetos"></section><div class="nexttxt" id="nextTxt"></div></div>
-  <div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div></div>
+    <div class="top">
+    <button class="iconbtn" id="bMenu" aria-label="Menú">☰<i class="bdg" id="menuBdg"></i></button>
   <div class="energywrap"><div class="lbl"><span>⚡ Energía para explorar</span><span id="energyTxt"></span></div><div class="energy"><i id="energyBar"></i></div></div>
-  <div class="msg" id="msg"></div>
+    <div class="coinchip lvlchip" id="lvlChip" aria-hidden="true">⭐ <b id="lvlTop">1</b></div><div class="coinchip" aria-hidden="true">🪙 <b id="coinsTop">0</b></div>
+  </div>
+  <div class="barea"><div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div><div class="ovl"><div class="combo" id="combo">Combo ×2</div><div class="boostchip" id="boostTxt"></div></div><div class="msg" id="msg"></div></div></div>
   <section class="actions">
     <button id="bSpawn" class="main"></button>
     <button id="bRegion"></button>
     <button id="bHelper"></button>
     <button id="bAd">Duplicar ingreso 60 s<small>Anuncio simulado (demo)</small></button>
   </section>
-  <div class="foot">Guarda solo en este dispositivo · Progreso fuera de línea hasta 8 h</div>
 </main>
 <div class="toast" id="toast" role="status"></div>
+<div class="modal" id="pMenu" hidden><div class="sheet" role="dialog" aria-label="Menú">
+  <div class="mhead"><div><div class="sub" id="edTxt">Prototipo v1</div><h2 id="menuT">Menú</h2></div>
+    <div class="mbtns"><button class="iconbtn" id="bMute" aria-label="Sonido">🔊</button><button class="iconbtn" id="bHelp" aria-label="Cómo se juega">?</button></div></div>
+  <div class="lvlrow" id="lvlRow"><b id="lvlTxt">Nivel 1</b><div class="xpbar"><i id="xpBar"></i></div><span id="xpTxt"></span></div>
+  <section class="coach" id="coach" hidden aria-live="polite"><div class="step" id="coachStep"></div><p id="coachText"></p><button id="coachBtn" hidden>Entendido</button></section>
+  <section class="quest" id="quest" hidden aria-label="Misión">
+    <div class="row"><b id="qText"></b><span id="qReward"></span></div>
+    <div class="bar"><i id="qBar"></i></div>
+  </section>
+  <section class="dm" id="dm" hidden aria-label="Misiones de hoy"><div class="dh"><b>🎯 Misiones de hoy</b><span id="dmCount">0/3</span></div><ul id="dmList"></ul></section>
+  <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
+  <section class="stats" aria-label="Estado">
+    <div class="stat"><b id="coins">0</b><span>Monedas</span></div>
+    <div class="stat"><b id="inc">0/s</b><span>Por segundo</span></div>
+    <div class="stat"><b id="pages">0</b><span>Páginas</span></div>
+  </section>
+  <section class="map" id="map" aria-label="Regiones del mapa"></section>
+  <div class="collwrap" id="collwrap" hidden><div class="nexttxt" id="collTitle" style="font-weight:700"></div><section class="collection" id="coll" aria-label="Colección de objetos"></section><div class="nexttxt" id="nextTxt"></div></div>
+  <button id="menuClose" class="main">Seguir jugando</button>
+</div></div>
 <div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-label="Cómo se juega">
   <h2>Cómo se juega</h2>
   <ul>
@@ -361,6 +415,7 @@ body.gold::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4
     <li>Dos <span id="hlpTop">🌍</span> juntos dan una <b>página del atlas</b> (bonus permanente). Con las 8 regiones podés <b>reeditar el atlas</b>.</li>
   </ul>
   <div><b style="font-size:13px">Cadena de objetos (de menor a mayor):</b><div class="chain" id="chain"></div></div>
+  <div class="foot">Guarda solo en este dispositivo · Progreso fuera de línea hasta 8 h</div>
   <button id="bClose" class="main">Seguir jugando</button>
   <button id="bLang"></button>
   <button id="bReset">Borrar progreso y empezar de nuevo</button>
@@ -630,10 +685,28 @@ function msCheck(){
   }
 }
 /* ---------- acciones de juego ---------- */
+/* ---------- nivel: puntos de experiencia ---------- */
+const xpFor = (L) => 50 * (L - 1) * L;           // puntos totales para ALCANZAR el nivel L (L2=100, L3=300, L4=600 ...)
+function xpInit(){ if (typeof S.xp !== 'number'){ S.xp = Math.floor(((S.stats && S.stats.merges) || 0) * 8 + ((S.stats && S.stats.spawns) || 0)); } if (!S.lvl) S.lvl = 1; while (S.xp >= xpFor(S.lvl + 1)) S.lvl++; }
+function addXp(n){
+  xpInit(); S.xp += n;
+  let up = 0, reward = 0;
+  while (S.xp >= xpFor(S.lvl + 1)){ S.lvl++; up++; reward += Math.max(200, Math.floor(E.incomePerSec(S) * 300)) + S.lvl * 100; }
+  if (up){
+    S.coins += reward; S.totalEarned += reward; S.energy = C.energyMax; sfx.region(); buzz([20, 30, 20, 30]);
+    let extra = '';
+    for (let L = S.lvl - up + 1; L <= S.lvl; L++){
+      if (L % 3 === 0){ S.boost = Math.max(S.boost || 0, 120); extra += '<br>' + T('lvlBoost', { s: 120 }); }
+      if (L % 5 === 0){ S.pages = (S.pages || 0) + 1; extra += '<br>' + T('lvlPage'); }
+    }
+    showDialog({ title: T('lvlUpT'), html: T('lvlUpBody', { n: S.lvl, r: fmt(reward) }) + extra, buttons: [{ label: T('ok') }] });
+  }
+}
 function doMerge(src, dst){
   const t0 = S.board[src];
   if (!E.merge(S, dst, src, true)) return false;
   const gain = S.lastGain, combo = S.combo, t = S.board[dst];
+  addXp(5 * t0 + (t0 >= C.maxTier ? 100 : 0));
   sfx.merge(t0, combo); buzz(t0 >= 5 ? 25 : 10);
   if (t0 >= C.maxTier){ floatText(dst, T('plusPage'), 'big'); burst(dst, 12); toast(T('pageToast')); shake(); }
   else {
@@ -656,7 +729,7 @@ function spawnOne(){
     showDialog({ title: T('rechT'), html: T('rechBody'), buttons: [{ label: T('rechBtn'), cls: 'main', fn: () => { S.energy = C.energyMax; sfx.quest(); } }, { label: T('rechLater') }] }); return; }
   const idx = E.emptyCell(S);
   if (!E.spawn(S)){ sfx.error(); return say(T('needCoins')); }
-  sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render(); save();
+  addXp(1); sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render(); save();
 }
 function tapCell(i){
   lastInput = Date.now();
@@ -827,7 +900,7 @@ $('bRegion').onclick = () => {
     return;
   }
   const idx = S.regions;
-  if (E.buyRegion(S)){ sfx.region(); buzz([30,40,30]); toast(T('regionDone', { r: REG(idx), m: C.regionMult })); shake(); checkQuest(); render(); save(); }
+  if (E.buyRegion(S)){ addXp(150); sfx.region(); buzz([30,40,30]); toast(T('regionDone', { r: REG(idx), m: C.regionMult })); shake(); checkQuest(); render(); save(); }
   else { sfx.error(); say(T('needN', { n: fmt(E.regionCost(S) - S.coins) })); }
 };
 $('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say(T('helperUp')); render(); save(); } else { sfx.error(); say(T('needN', { n: fmt(E.helperCost(S) - S.coins) })); } };
@@ -842,6 +915,12 @@ $('bMute').onclick = () => {
 const modal = $('modal');
 applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
+function wirePanel(open, id, close){ const p = $(id); $(open).onclick = () => { p.hidden = false; updateCoach(); }; $(close).onclick = () => { p.hidden = true; }; p.addEventListener('click', e => { if (e.target === p) p.hidden = true; }); }
+wirePanel('bMenu', 'pMenu', 'menuClose');
+function syncMenu(){
+  const dc = $('dmCount'); $('menuBdg').textContent = (dc && !$('dm').hidden) ? dc.textContent : '';
+  $('bMenu').classList.toggle('alert', !coach.hidden);
+}
 $('bClose').onclick = () => { modal.hidden = true; };
 modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
 $('bLang').onclick = () => showLangPicker(false);
@@ -877,11 +956,13 @@ function render(){
   if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = T('qLabel', { t: qText(d) }); $('qReward').textContent = T('qReward', { n: fmt(qReward()) }); $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
   renderCollection();
   updateCoach();
+  syncMenu();
 }
 function tickUI(){
-  $('coins').textContent = fmt(S.coins);
+  $('coins').textContent = $('coinsTop').textContent = fmt(S.coins);
   $('inc').textContent = fmt(E.incomePerSec(S)) + '/s';
   $('pages').textContent = S.pages;
+  xpInit(); { const a = xpFor(S.lvl), b = xpFor(S.lvl + 1), p = Math.max(0, Math.min(1, (S.xp - a) / (b - a))); $('lvlTop').textContent = S.lvl; $('lvlChip').style.setProperty('--p', (p * 100).toFixed(0) + '%'); $('lvlTxt').textContent = T('lvl') + ' ' + S.lvl; $('xpBar').style.width = (p * 100).toFixed(1) + '%'; $('xpTxt').textContent = Math.floor(S.xp) + ' / ' + b; }
   $('energyBar').style.width = (S.energy / C.energyMax * 100) + '%';
   $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
   $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
@@ -944,7 +1025,7 @@ function spawnStar(){
 /* ---------- idioma: textos fijos, selector inicial y cambio desde la ayuda ---------- */
 function applyLang(){
   const q = (s) => document.querySelector(s), set = (s, k, html) => { const e = q(s); if (e) e[html ? 'innerHTML' : 'textContent'] = T(k); };
-  [['bMute','aSound'],['bHelp','aHelp'],['chest','aChest'],['dm','aDm'],['quest','aQuest'],['map','aMap'],['coll','aColl'],['board','aBoard']].forEach(([id, k]) => { const e = $(id); if (e) e.setAttribute('aria-label', T(k)); });
+  [['bMute','aSound'],['bHelp','aHelp'],['bMenu','menuT'],['chest','aChest'],['dm','aDm'],['quest','aQuest'],['map','aMap'],['coll','aColl'],['board','aBoard']].forEach(([id, k]) => { const e = $(id); if (e) e.setAttribute('aria-label', T(k)); });
   q('.stats').setAttribute('aria-label', T('aStatus')); q('#modal .sheet').setAttribute('aria-label', T('helpT'));
   ['coins', 'perSec', 'pages'].forEach((k, i) => { q('.stats .stat:nth-child(' + (i + 1) + ') span').textContent = T(k); });
   set('#chest b', 'chestT'); set('#dm .dh b', 'dmT'); set('.energywrap .lbl span', 'energy');
@@ -952,7 +1033,7 @@ function applyLang(){
   set('.foot', 'foot'); set('#modal h2', 'helpT'); set('#modal .sheet > div > b', 'chainT');
   document.querySelectorAll('#modal ul li').forEach((li, i) => { li.innerHTML = T('h' + (i + 1), { top: '<span id="hlpTop">🌍</span>' }); });
   $('bClose').textContent = T('keep'); $('bReset').textContent = T('reset'); delete $('bReset').dataset.sure;
-  $('bLang').textContent = T('langBtn');
+  $('bLang').textContent = T('langBtn'); $('menuT').textContent = T('menuT'); $('menuClose').textContent = T('keep');
   document.title = 'Atlas Merge';
   document.documentElement.lang = I18N.lang === 'pt' ? 'pt-BR' : I18N.lang;
   const hp = $('hlpTop'); if (hp) hp.textContent = ICONS[10];
