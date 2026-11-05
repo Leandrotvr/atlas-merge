@@ -119,6 +119,13 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
   .energywrap{grid-area:energy}.actions{grid-area:actions}.msg{grid-area:msg}.foot{grid-area:foot}
 }
 @media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot,.reveal,.slot.next{animation:none}.toast{transition:none}}
+.tip{position:fixed;left:50%;transform:translateX(-50%);z-index:40;width:min(92vw,420px);box-sizing:border-box;background:linear-gradient(180deg,#1f3a52,#0f1c29);color:#fff8e6;border-radius:14px;padding:10px 14px;box-shadow:0 0 0 2px #e0a93a,0 6px 18px rgba(0,0,0,.45);font-size:16px;line-height:1.35;font-weight:600;display:flex;flex-direction:column;gap:6px}
+.tip[hidden],.hand[hidden]{display:none}
+.tip small{color:#ffd978;font-weight:800;font-size:12px}
+.tip button{align-self:flex-start;background:#ffd978;color:#1a1206;border:1px solid #e0a93a;border-radius:10px;font-weight:800;min-height:40px;padding:8px 14px}
+.hand{position:fixed;z-index:41;font-size:40px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));animation:tap 1s ease-in-out infinite}
+@keyframes tap{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-12px)}}
+@media (prefers-reduced-motion:reduce){.hand{animation:none}}
 </style>
 <style>
 @font-face{font-family:'Atkinson Hyperlegible';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/atkinson-hyperlegible-latin-400-normal.woff2) format('woff2')}
@@ -384,6 +391,7 @@ body .iconbtn{min-height:0}
     <button id="bAd">Duplicar ingreso 60 s<small>Anuncio simulado (demo)</small></button>
   </section>
 </main>
+<div class="tip" id="tip" hidden aria-live="polite"><small id="tipStep"></small><span id="tipText"></span><button id="tipBtn" hidden></button></div><div class="hand" id="hand" hidden aria-hidden="true">👆</div>
 <div class="toast" id="toast" role="status"></div>
 <div class="modal" id="pMenu" hidden><div class="sheet" role="dialog" aria-label="Menú">
   <div class="mhead"><div><div class="sub" id="edTxt">Prototipo v1</div><h2 id="menuT">Menú</h2></div>
@@ -821,7 +829,7 @@ const coach = $('coach'), coachStep = $('coachStep'), coachText = $('coachText')
 const TOTAL = 5;
 function clearPulse(){ document.querySelectorAll('.pulse').forEach(e => e.classList.remove('pulse')); }
 function updateCoach(){
-  clearPulse();
+  clearPulse(); tipSync.target = null;
   const items = S.board.filter(Boolean).length, pair = E.findPair(S), maxT = Math.max(0, ...S.board);
   if (S.tut === 0 && items >= 2) S.tut = 1;
   if (S.tut <= 1 && (maxT >= 2 || S.pages > 0)) S.tut = 2;
@@ -832,14 +840,14 @@ function updateCoach(){
   coachStep.textContent = T('coachStep', { a: Math.min(S.tut + 1, TOTAL), b: TOTAL });
   if (S.tut === 0){
     coachText.textContent = items === 0 ? T('c0a') : T('c0b');
-    $('bSpawn').classList.add('pulse');
+    $('bSpawn').classList.add('pulse'); tipSync.target = $('bSpawn');
   } else if (S.tut === 1){
     if (pair){
       coachText.textContent = T('c1a');
-      pair.forEach(i => boardEl.children[i].classList.add('pulse'));
+      pair.forEach(i => boardEl.children[i].classList.add('pulse')); tipSync.target = boardEl.children[pair[0]];
     } else {
       coachText.textContent = T('c1b');
-      $('bSpawn').classList.add('pulse');
+      $('bSpawn').classList.add('pulse'); tipSync.target = $('bSpawn');
     }
   } else if (S.tut === 2){
     coachText.textContent = T('c2');
@@ -848,13 +856,29 @@ function updateCoach(){
   } else if (S.tut === 3){
     const rc = E.regionCost(S);
     coachText.textContent = S.coins >= rc ? T('c3a', { r: REG(0) }) : T('c3b', { rc: fmt(rc), have: fmt(S.coins) });
-    if (S.coins >= rc) $('bRegion').classList.add('pulse');
+    if (S.coins >= rc){ $('bRegion').classList.add('pulse'); tipSync.target = $('bRegion'); }
   } else if (S.tut === 4){
     const hc = E.helperCost(S);
     coachText.textContent = S.coins >= hc ? T('c4a') : T('c4b', { hc: fmt(hc), have: fmt(S.coins) });
-    if (S.coins >= hc) $('bHelper').classList.add('pulse');
+    if (S.coins >= hc){ $('bHelper').classList.add('pulse'); tipSync.target = $('bHelper'); }
   }
+  tipSync();
 }
+/* burbuja de guia sobre el tablero (visible sin abrir el menu) */
+const tipEl = $('tip'), handEl = $('hand');
+function tipSync(){
+  const menuOpen = !$('pMenu').hidden || !$('modal').hidden || dlgOpen;
+  if (coach.hidden || menuOpen || S.tut > 4){ tipEl.hidden = true; handEl.hidden = true; return; }
+  $('tipStep').textContent = coachStep.textContent; $('tipText').textContent = coachText.textContent;
+  $('tipBtn').hidden = coachBtn.hidden; $('tipBtn').textContent = coachBtn.textContent; $('tipBtn').onclick = () => coachBtn.onclick && coachBtn.onclick();
+  tipEl.hidden = false;
+  const bw = $('boardwrap').getBoundingClientRect(), th = tipEl.offsetHeight;
+  tipEl.style.top = Math.max(6, bw.top - th - 8) + 'px';
+  const t = tipSync.target;
+  if (t){ const r = t.getBoundingClientRect(); handEl.style.left = (r.left + r.width / 2) + 'px'; handEl.style.top = (r.top + r.height * .55) + 'px'; handEl.hidden = false; }
+  else handEl.hidden = true;
+}
+window.addEventListener('resize', () => tipSync());
 
 /* ---------- construccion de la pantalla ---------- */
 for (let i = 0; i < C.cols * C.rows; i++){
@@ -1097,7 +1121,7 @@ function loop(){
   saveAcc += Math.min(el, 5);
   if (acc >= 0.25){
     goldTick(acc); msCheck();
-    E.advance(S, acc); acc = 0; tickUI(); checkDiscovery(); checkQuest();
+    E.advance(S, acc); acc = 0; tickUI(); tipSync(); checkDiscovery(); checkQuest();
     const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
