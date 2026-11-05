@@ -20,3 +20,6 @@ if (!g.includes('signingConfigs')) {
 }
 fs.writeFileSync(f, g);
 console.log('build.gradle listo: versionCode ' + code);
+
+// Google Play Games Services (ranking)
+require('./playgames.js');
