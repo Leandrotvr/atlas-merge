@@ -59,6 +59,8 @@ h1{font:600 26px/1 var(--font-display);margin:0;letter-spacing:-.01em}
 .cell.t8 .ico{filter:drop-shadow(0 0 9px var(--seal))}
 .cell small{position:absolute;right:5px;bottom:2px;font:600 11px var(--font-body);color:var(--ink-2)}
 .ico{display:block;pointer-events:none}
+.tutbtn{width:100%;min-height:44px;font-weight:800;border-radius:12px;border:2px solid #e0a93a;background:#fff4d6;color:#3a2a0a}
+.ico-svg{display:inline-block;vertical-align:-.12em}
 .pop{animation:pop .25s ease-out}
 @keyframes pop{0%{transform:scale(.55)}65%{transform:scale(1.15)}100%{transform:scale(1)}}
 .fx{position:absolute;inset:0;pointer-events:none;overflow:visible}
@@ -412,6 +414,7 @@ body .iconbtn{min-height:0}
   </section>
   <section class="dm" id="dm" hidden aria-label="Misiones de hoy"><div class="dh"><b>🎯 Misiones de hoy</b><span id="dmCount">0/3</span></div><ul id="dmList"></ul></section>
   <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
+  <button id="bTut" class="tutbtn" type="button"></button>
   <section class="rank" id="rankBox" hidden aria-label="Ranking"><button id="bRank" class="main"></button><button id="bPrize"></button></section>
   <section class="stats" aria-label="Estado">
     <div class="stat"><b id="coins">0</b><span>Monedas</span></div>
@@ -445,8 +448,9 @@ body .iconbtn{min-height:0}
 <script src="engine.js"></script>
 <script>
 const E = AtlasEngine, C = E.CFG;
+const BALLOON = '<svg class="ico-svg" viewBox="0 0 64 64" width="1em" height="1em" aria-hidden="true"><path d="M32 3C17 3 8 14 8 26c0 10 7 18 14 24h20c7-6 14-14 14-24C56 14 47 3 32 3z" fill="#d9482f"/><path d="M32 3c-7 6-10 14-10 23 0 9 4 17 8 24h4c4-7 8-15 8-24 0-9-3-17-10-23z" fill="#ffd978"/><path d="M32 3c-3 6-4 14-4 23 0 9 1 17 2 24h4c1-7 2-15 2-24 0-9-1-17-4-23z" fill="#d9482f"/><path d="M22 50h20l-3 6H25z" fill="#7a4a24"/><rect x="25" y="56" width="14" height="7" rx="1.5" fill="#a8692f"/><path d="M25 56l-1-6M39 56l1-6" stroke="#5a3718" stroke-width="1.4"/></svg>';
 const SETS = [
-  { name: 'Exploradores', icons: ['🎒','🧭','🗺️','🔭','⛵','🎈','✈️','🛰️','🚀','🌍'], names: ['Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'] },
+  { name: 'Exploradores', icons: ['🎒','🧭','🗺️','🔭','⛵',BALLOON,'✈️','🛰️','🚀','🌍'], names: ['Mochila','Brújula','Mapa','Catalejo','Barco','Globo','Avión','Satélite','Cohete','Planeta'] },
   { name: 'Criaturas', icons: ['🥚','🐛','🐸','🐟','🐢','🦜','🐆','🐘','🐋','🐉'], names: ['Huevo','Oruga','Rana','Pez','Tortuga','Loro','Jaguar','Elefante','Ballena','Dragón'] },
   { name: 'Maravillas', icons: ['💧','🌊','🏞️','🌳','⛰️','🏔️','🌋','🌅','🌈','🌌'], names: ['Gota','Ola','Río','Bosque','Sierra','Cumbre','Volcán','Amanecer','Arcoíris','Aurora'] },
 ];
@@ -572,7 +576,7 @@ function burst(i, n){
   }
 }
 function shake(){ wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake'); }
-function toast(msg, ms){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms || 2300); }
+function toast(msg, ms){ const t = $('toast'); t.innerHTML = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms || 2300); }
 
 /* ---------- dialogos en cola ---------- */
 function showDialog(d){ dlgQueue.push(d); if (!dlgOpen) nextDialog(); }
@@ -809,10 +813,10 @@ function renderCollection(){
   [...collEl.children].forEach((d, k) => {
     const t = k + 1, got = t <= S.disc, next = t === S.disc + 1;
     d.className = 'slot' + (got ? ' got' : next ? ' next' : '');
-    d.textContent = got ? ICONS[t] : '?';
+    d.innerHTML = got ? ICONS[t] : '?';
     d.title = got ? NAMES[t] : next ? T('nextToFind') : T('undiscovered');
   });
-  $('nextTxt').textContent = S.disc >= 10 ? T('collDone', { top: ICONS[10] }) :
+  $('nextTxt').innerHTML = S.disc >= 10 ? T('collDone', { top: ICONS[10] }) :
     S.disc >= 1 ? T('collNext', { item: ICONS[S.disc] + ' ' + NAMES[S.disc], d: S.disc }) : '';
 }
 
@@ -892,7 +896,7 @@ function pathSync(){
   pathEl.setAttribute('aria-label', T('pathAria'));
   pathRow.innerHTML = ICONS.slice(1).map((ic, i) => '<span class="st' + (i + 1 <= d ? ' got' : (i + 1 === d + 1 ? ' nx' : '')) + '">' + ic + '</span>').join('');
   pathEl.classList.toggle('reed', can);
-  pathGoal.textContent = can ? T('pathReed') : d >= 10 ? T('pathTop', { top: ICONS[10] }) : T('pathNext', { item: ICONS[d + 1] + ' ' + NAMES[d + 1] });
+  pathGoal.innerHTML = can ? T('pathReed') : d >= 10 ? T('pathTop', { top: ICONS[10] }) : T('pathNext', { item: ICONS[d + 1] + ' ' + NAMES[d + 1] });
 }
 pathEl.addEventListener('click', () => { if (E.canPrestige(S)) $('bRegion').onclick(); });
 /* burbuja de guia sobre el tablero (visible sin abrir el menu) */
@@ -933,7 +937,7 @@ boardEl.addEventListener('pointermove', ev => {
   if (!drag || !drag.had) return;
   if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) > 8){
     drag.moved = true; boardEl.children[drag.i].classList.add('drag');
-    ghost = document.createElement('div'); ghost.className = 'ghost'; ghost.textContent = ICONS[S.board[drag.i]]; document.body.appendChild(ghost);
+    ghost = document.createElement('div'); ghost.className = 'ghost'; ghost.innerHTML = ICONS[S.board[drag.i]]; document.body.appendChild(ghost);
   }
   if (drag.moved){
     ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px';
@@ -974,6 +978,7 @@ $('bMute').onclick = () => {
 const modal = $('modal');
 applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
+$('bTut').onclick = () => { audio(); modal.hidden = false; };
 function wirePanel(open, id, close){ const p = $(id); $(open).onclick = () => { p.hidden = false; updateCoach(); }; $(close).onclick = () => { p.hidden = true; }; p.addEventListener('click', e => { if (e.target === p) p.hidden = true; }); }
 wirePanel('bMenu', 'pMenu', 'menuClose');
 /* ---------- ranking (Google Play Games Services, solo app Android) ---------- */
@@ -1039,7 +1044,7 @@ function render(){
   $('edTxt').textContent = T('edTxt', { n: S.editions + 1 });
   muteIco();
   const q = $('quest'); q.hidden = S.tut < 3;
-  if (!q.hidden){ const d = questDef(S.q); $('qText').textContent = T('qLabel', { t: qText(d) }); $('qReward').textContent = T('qReward', { n: fmt(qReward()) }); $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
+  if (!q.hidden){ const d = questDef(S.q); $('qText').innerHTML = T('qLabel', { t: qText(d) }); $('qReward').textContent = T('qReward', { n: fmt(qReward()) }); $('qBar').style.width = (qProgress(d) / d[1] * 100) + '%'; }
   renderCollection();
   updateCoach();
   syncMenu();
@@ -1119,7 +1124,7 @@ function applyLang(){
   set('.foot', 'foot'); set('#modal h2', 'helpT'); set('#modal .sheet > div > b', 'chainT');
   document.querySelectorAll('#modal ul li').forEach((li, i) => { li.innerHTML = T('h' + (i + 1), { top: '<span id="hlpTop">🌍</span>' }); });
   $('bClose').textContent = T('keep'); $('bReset').textContent = T('reset'); delete $('bReset').dataset.sure;
-  $('bLang').textContent = T('langBtn'); $('menuT').textContent = T('menuT'); $('menuClose').textContent = T('keep'); $('bRank').textContent = T('rankBtn'); prizeSync();
+  $('bLang').textContent = T('langBtn'); $('menuT').textContent = T('menuT'); $('menuClose').textContent = T('keep'); $('bRank').textContent = T('rankBtn'); $('bTut').textContent = T('tutBtn'); prizeSync();
   document.title = 'Atlas Merge';
   document.documentElement.lang = I18N.lang === 'pt' ? 'pt-BR' : I18N.lang;
   const hp = $('hlpTop'); if (hp) hp.textContent = ICONS[10];
