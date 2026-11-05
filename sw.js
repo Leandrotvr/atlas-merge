@@ -1,5 +1,5 @@
 // Funcionamiento sin internet: guarda los archivos del juego la primera vez y los sirve desde el dispositivo.
-const CACHE = 'atlas-merge-v22';
+const CACHE = 'atlas-merge-v23';
 const FILES = ['./', './index.html', './engine.js', './i18n.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './fonts/atkinson-hyperlegible-latin-400-normal.woff2', './fonts/atkinson-hyperlegible-latin-700-normal.woff2', './fonts/fraunces-latin-wght-normal.woff2'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
