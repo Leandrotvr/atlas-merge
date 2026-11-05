@@ -79,3 +79,9 @@ No sign-up. No personal data. Just you and your map.
 1. Cuenta de Play Console (pago único USD 25 y verificación de identidad).
 2. Crear app → subir `atlas-merge-aab` (archivo `.aab` del workflow) a una **prueba cerrada**.
 3. Cuentas personales nuevas: 12 testers durante 14 días seguidos antes de pasar a producción.
+
+## Play Games Services (ranking)
+- Play Games project: Default Gemini Project, ID/App ID: 648286494830 (cloud project gen-lang-client-0226226587)
+- OAuth Android client: "Atlas Merge Android" (package app.atlasmerge.juego, SHA-1 de la firma de Play 2C:8C:B1:A0:17:44:D7:CE:01:BD:47:B1:96:B7:FB:DA:7D:4E:3F:BB), credencial "Atlas Merge" guardada
+- Marcador "Top Explorers": ID CgkI7sCLh-8SEAIQAQ (borrador; falta publicarlo y el icono 512x512 es opcional)
+- Pantalla de consentimiento OAuth: publicada (en producción), scopes games/games_lite/drive.appdata/email/profile/openid

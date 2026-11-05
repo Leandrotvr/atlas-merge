@@ -364,6 +364,9 @@ body .iconbtn{min-height:0}
 .xpbar{flex:1;height:9px;border-radius:5px;background:color-mix(in srgb,var(--edge,var(--line)) 18%,transparent);overflow:hidden}
 .xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#e0a93a,#ffd978)}
 </style>
+<style id="v12">
+.rank{display:flex;gap:8px;margin:10px 0}.rank button{flex:1;min-height:44px;font-weight:700}.rank button[disabled]{opacity:.55}
+</style>
 </head>
 <body>
 <div class="bg" id="bg" aria-hidden="true"></div>
@@ -393,6 +396,7 @@ body .iconbtn{min-height:0}
   </section>
   <section class="dm" id="dm" hidden aria-label="Misiones de hoy"><div class="dh"><b>🎯 Misiones de hoy</b><span id="dmCount">0/3</span></div><ul id="dmList"></ul></section>
   <section class="chest" id="chest" hidden aria-label="Cofre del explorador"><div class="ci" id="chestIco">🎁</div><b>Cofre del explorador</b><span id="chestTxt">0/10</span><div class="bar"><i id="chestBar"></i></div></section>
+  <section class="rank" id="rankBox" hidden aria-label="Ranking"><button id="bRank" class="main"></button><button id="bPrize"></button></section>
   <section class="stats" aria-label="Estado">
     <div class="stat"><b id="coins">0</b><span>Monedas</span></div>
     <div class="stat"><b id="inc">0/s</b><span>Por segundo</span></div>
@@ -917,6 +921,33 @@ applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
 function wirePanel(open, id, close){ const p = $(id); $(open).onclick = () => { p.hidden = false; updateCoach(); }; $(close).onclick = () => { p.hidden = true; }; p.addEventListener('click', e => { if (e.target === p) p.hidden = true; }); }
 wirePanel('bMenu', 'pMenu', 'menuClose');
+/* ---------- ranking (Google Play Games Services, solo app Android) ---------- */
+const PG_LB = 'CgkI7sCLh-8SEAIQAQ';
+const PG = (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PlayGames) || null;
+let pgIn = false, pgLast = -1, pgBusy = false;
+const weekId = () => Math.floor((Date.now() / 864e5 + 3) / 7);
+function pgSignIn(){ if (!PG || pgBusy) return Promise.resolve(pgIn); pgBusy = true; return PG.signIn().then(r => { pgIn = !!(r && r.signedIn); return pgIn; }).catch(() => false).then(v => { pgBusy = false; return v; }); }
+function pgSend(){ if (!PG || !pgIn) return; xpInit(); const sc = Math.floor(S.xp); if (sc === pgLast) return; pgLast = sc; PG.submitScore({ leaderboardId: PG_LB, score: sc }).catch(() => {}); }
+function prizeSync(){ const b = $('bPrize'); if (!b) return; const got = S.prizeWk === weekId(); b.disabled = got; b.textContent = got ? T('rankPrizeDone') : T('rankPrizeBtn'); }
+if (PG){
+  $('rankBox').hidden = false;
+  $('bRank').onclick = () => { pgSignIn().then(ok => { if (!ok) { toast(T('rankNoSign')); return; } pgSend(); PG.showLeaderboard({ leaderboardId: PG_LB }).catch(() => toast(T('rankNoSign'))); }); };
+  $('bPrize').onclick = () => {
+    if (S.prizeWk === weekId()) return;
+    pgSignIn().then(ok => { if (!ok) { toast(T('rankNoSign')); return; } pgSend();
+      setTimeout(() => PG.weeklyRank({ leaderboardId: PG_LB }).then(r => {
+        const rk = (r && r.rank) || 0; if (rk <= 0) { toast(T('rankNone')); return; }
+        const mult = rk <= 10 ? 3 : rk <= 100 ? 2 : 1, base = Math.max(1000, Math.floor(E.incomePerSec(S) * 1800)), coins = base * mult;
+        S.coins += coins; S.totalEarned += coins; S.energy = C.energyMax; S.prizeWk = weekId(); let extra = '';
+        if (rk <= 10){ S.pages = (S.pages || 0) + 1; extra = '<br>' + T('lvlPage'); }
+        sfx.quest(); save(); prizeSync();
+        showDialog({ title: T('rankPrizeT'), html: T('rankPrizeBody', { k: rk, r: fmt(coins) }) + extra, buttons: [{ label: T('ok') }] });
+      }).catch(() => toast(T('rankNoSign'))), 1500); });
+  };
+  pgSignIn().then(() => { pgSend(); prizeSync(); });
+  setInterval(pgSend, 30000);
+}
+
 function syncMenu(){
   const dc = $('dmCount'); $('menuBdg').textContent = (dc && !$('dm').hidden) ? dc.textContent : '';
   $('bMenu').classList.toggle('alert', !coach.hidden);
@@ -1033,7 +1064,7 @@ function applyLang(){
   set('.foot', 'foot'); set('#modal h2', 'helpT'); set('#modal .sheet > div > b', 'chainT');
   document.querySelectorAll('#modal ul li').forEach((li, i) => { li.innerHTML = T('h' + (i + 1), { top: '<span id="hlpTop">🌍</span>' }); });
   $('bClose').textContent = T('keep'); $('bReset').textContent = T('reset'); delete $('bReset').dataset.sure;
-  $('bLang').textContent = T('langBtn'); $('menuT').textContent = T('menuT'); $('menuClose').textContent = T('keep');
+  $('bLang').textContent = T('langBtn'); $('menuT').textContent = T('menuT'); $('menuClose').textContent = T('keep'); $('bRank').textContent = T('rankBtn'); prizeSync();
   document.title = 'Atlas Merge';
   document.documentElement.lang = I18N.lang === 'pt' ? 'pt-BR' : I18N.lang;
   const hp = $('hlpTop'); if (hp) hp.textContent = ICONS[10];
