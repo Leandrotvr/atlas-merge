@@ -693,16 +693,25 @@ const MS_DEFS = [
   ['m50', s => s.stats.merges >= 50, 'ms_m50', 0.5], ['m250', s => s.stats.merges >= 250, 'ms_m250', 1.5],
   ['m1000', s => s.stats.merges >= 1000, 'ms_m1000', 5], ['p1', s => s.pages >= 1, 'ms_p1', 1],
   ['p5', s => s.pages >= 5, 'ms_p5', 3], ['p15', s => s.pages >= 15, 'ms_p15', 8],
-  ['r1', s => s.regions >= 1, 'ms_r1', 0.8], ['e1', s => s.editions >= 1, 'ms_e1', 6]
+  ['r1', s => s.regions >= 1, 'ms_r1', 0.8], ['r4', s => s.regions >= 4, 'ms_r4', 1.2], ['r8', s => s.regions >= C.regions.length, 'ms_r8', 2], ['e1', s => s.editions >= 1, 'ms_e1', 6]
 ];
 function msCheck(){
   if (S.tut < 3) return; S.ms = S.ms || {};
   for (const [k, ok, name, mult] of MS_DEFS){
     if (!S.ms[k] && ok(S)){
       S.ms[k] = 1; const r = Math.max(200, Math.floor(E.incomePerSec(S) * 600 * mult)); S.coins += r; S.totalEarned += r;
-      sfx.region(); buzz([20, 30, 20, 30]); toast(T('msToast', { name: T(name), n: fmt(r) })); return;
+      sfx.region(); buzz([20, 30, 20, 30]); showDialog({ title: '🏆 ' + T('msT'), html: '<b>' + T(name) + '</b><br>' + T('msBody', { n: fmt(r) }), buttons: [{ label: T('ok') }] }); return;
     }
   }
+}
+/* ---------- titulos que se ganan ---------- */
+const TITLE_LVL = [1, 4, 8, 13, 20];
+function titleIdx(){ xpInit(); let i = 0; TITLE_LVL.forEach((l, k) => { if (S.lvl >= l) i = k; }); return i; }
+const titleName = (i) => tr('titles')[i];
+function titleCheck(){
+  if (S.tut < 3) return; const i = titleIdx();
+  if (typeof S.title !== 'number'){ S.title = i; return; }
+  if (i > S.title){ S.title = i; sfx.region(); showDialog({ title: '🎖️ ' + T('titleT'), html: '<b>' + titleName(i) + '</b><br>' + T('titleBody'), buttons: [{ label: T('ok') }] }); }
 }
 /* ---------- acciones de juego ---------- */
 /* ---------- nivel: puntos de experiencia ---------- */
@@ -1039,7 +1048,7 @@ function tickUI(){
   $('coins').textContent = $('coinsTop').textContent = fmt(S.coins);
   $('inc').textContent = fmt(E.incomePerSec(S)) + '/s';
   $('pages').textContent = S.pages;
-  xpInit(); { const a = xpFor(S.lvl), b = xpFor(S.lvl + 1), p = Math.max(0, Math.min(1, (S.xp - a) / (b - a))); $('lvlTop').textContent = S.lvl; $('lvlChip').style.setProperty('--p', (p * 100).toFixed(0) + '%'); $('lvlTxt').textContent = T('lvl') + ' ' + S.lvl; $('xpBar').style.width = (p * 100).toFixed(1) + '%'; $('xpTxt').textContent = Math.floor(S.xp) + ' / ' + b; }
+  xpInit(); { const a = xpFor(S.lvl), b = xpFor(S.lvl + 1), p = Math.max(0, Math.min(1, (S.xp - a) / (b - a))); $('lvlTop').textContent = S.lvl; $('lvlChip').style.setProperty('--p', (p * 100).toFixed(0) + '%'); $('lvlTxt').textContent = T('lvl') + ' ' + S.lvl + ' · ' + titleName(titleIdx()); $('xpBar').style.width = (p * 100).toFixed(1) + '%'; $('xpTxt').textContent = Math.floor(S.xp) + ' / ' + b; }
   $('energyBar').style.width = (S.energy / C.energyMax * 100) + '%';
   $('energyTxt').textContent = Math.floor(S.energy) + '/' + C.energyMax;
   $('boostTxt').textContent = S.boost > 0 ? 'x2 · ' + Math.ceil(S.boost) + ' s' : '';
@@ -1143,7 +1152,7 @@ function loop(){
   saveAcc += Math.min(el, 5);
   if (acc >= 0.25){
     goldTick(acc); msCheck();
-    E.advance(S, acc); acc = 0; tickUI(); tipSync(); pathSync(); checkDiscovery(); checkQuest();
+    E.advance(S, acc); acc = 0; tickUI(); tipSync(); pathSync(); titleCheck(); checkDiscovery(); checkQuest();
     const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
