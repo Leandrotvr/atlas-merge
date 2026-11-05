@@ -741,7 +741,7 @@ function doMerge(src, dst){
   const gain = S.lastGain, combo = S.combo, t = S.board[dst];
   addXp(5 * t0 + (t0 >= C.maxTier ? 100 : 0));
   sfx.merge(t0, combo); buzz(t0 >= 5 ? 25 : 10);
-  if (t0 >= C.maxTier){ floatText(dst, T('plusPage'), 'big'); burst(dst, 12); toast(T('pageToast')); shake(); }
+  if (t0 >= C.maxTier){ floatText(dst, T('plusPage'), 'big'); burst(dst, 12); toast(T('pageToast')); shake(); const fs = tr('facts'); if (fs && fs.length) showDialog({ title: T('factT'), html: fs[((S.pages || 1) - 1) % fs.length], buttons: [{ label: T('ok') }] }); }
   else {
     floatText(dst, '+' + fmt(gain) + (combo > 1 ? ' ×' + (1 + C.comboStep * (combo - 1)).toFixed(2).replace(/0$/,'') : ''), combo >= 3 ? 'big' : '');
     burst(dst, 6 + Math.min(8, t0)); if (t0 >= 4) shake();
