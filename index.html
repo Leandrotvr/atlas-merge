@@ -398,7 +398,6 @@ body .iconbtn{min-height:0}
     <button id="bSpawn" class="main"></button>
     <button id="bRegion"></button>
     <button id="bHelper"></button>
-    <button id="bHelperOn" class="tutbtn" type="button" hidden></button>
     <button id="bAd">Duplicar ingreso 60 s<small>Anuncio simulado (demo)</small></button>
   </section>
 </main>
@@ -755,7 +754,7 @@ function doMerge(src, dst){
 function moveItem(src, dst){
   if (dst >= E.cells(S)) return false;
   const a = S.board[src], b = S.board[dst]; S.board[dst] = a; S.board[src] = b;
-  sfx.move(); sel = -1; S.pop = dst; lastInput = Date.now(); render(); save(); return true;
+  if (a && b && a !== b){ say(T('noMatch')); sfx.error(); shake(); } else sfx.move(); sel = -1; S.pop = dst; lastInput = Date.now(); render(); save(); return true;
 }
 function spawnOne(){
   if (E.emptyCell(S) < 0){ sfx.error(); return say(T('fullBoard')); }
@@ -772,7 +771,7 @@ function tapCell(i){
   if (sel === i){ sel = -1; render(); return; }
   if (S.board[i] && S.board[i] === S.board[sel]){ doMerge(sel, i); return; }
   if (!S.board[i]){ moveItem(sel, i); return; }
-  sel = i; render();
+  say(T('noMatch')); sfx.error(); shake(); sel = i; render();
 }
 
 /* ---------- coleccion y descubrimientos ---------- */
@@ -967,7 +966,16 @@ $('bRegion').onclick = () => {
   if (E.buyRegion(S)){ addXp(150); sfx.region(); buzz([30,40,30]); toast(T('regionDone', { r: REG(idx), m: C.regionMult })); shake(); checkQuest(); render(); save(); }
   else { sfx.error(); say(T('needN', { n: fmt(E.regionCost(S) - S.coins) })); }
 };
-$('bHelper').onclick = () => { audio(); if (E.buyHelper(S)){ sfx.quest(); say(T('helperUp')); render(); save(); } else { sfx.error(); say(T('needN', { n: fmt(E.helperCost(S) - S.coins) })); } };
+function helperUpgrade(){ if (E.buyHelper(S)){ sfx.quest(); say(T('helperUp')); render(); save(); } else { sfx.error(); say(T('needN', { n: fmt(E.helperCost(S) - S.coins) })); } }
+$('bHelper').onclick = () => {
+  audio();
+  if (S.helper < 1){ helperUpgrade(); return; }
+  const on = S.helperOn !== false, mx = S.helper >= E.helperMax(), hc = E.helperCost(S);
+  const bt = [{ label: on ? T('helperPauseB') : T('helperResumeB'), cls: 'main', fn: () => { S.helperOn = !on; S.helperTimer = 0; say(on ? T('helperOffMsg') : T('helperOnMsg')); } }];
+  if (!mx) bt.push({ label: T('helperImprove') + ' · ' + fmt(hc), fn: () => { if (S.coins >= hc) helperUpgrade(); else say(T('needN', { n: fmt(hc - S.coins) })); } });
+  bt.push({ label: T('ok') });
+  showDialog({ title: T('helperMenuT'), html: '<b>' + (on ? T('helperStOn') : T('helperStOff')) + '</b><br>' + T('lvl') + ' ' + S.helper + '/' + E.helperMax(), buttons: bt });
+};
 $('bAd').onclick = () => { audio(); S.boost = 60; sfx.quest(); say(T('adToast')); render(); };
 function muteIco(){ $('bMute').textContent = S.mute ? '🔇' : S.nomusic ? '🔉' : '🔊'; }
 $('bMute').onclick = () => {
@@ -979,7 +987,6 @@ $('bMute').onclick = () => {
 const modal = $('modal');
 applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
-$('bHelperOn').onclick = () => { audio(); S.helperOn = (S.helperOn === false); S.helperTimer = 0; say(S.helperOn === false ? T('helperOffMsg') : T('helperOnMsg')); render(); save(); };
 $('bTut').onclick = () => { audio(); modal.hidden = false; };
 function wirePanel(open, id, close){ const p = $(id); $(open).onclick = () => { p.hidden = false; updateCoach(); }; $(close).onclick = () => { p.hidden = true; }; p.addEventListener('click', e => { if (e.target === p) p.hidden = true; }); }
 wirePanel('bMenu', 'pMenu', 'menuClose');
@@ -1041,9 +1048,8 @@ function render(){
   bs.disabled = false; bs.style.opacity = (E.emptyCell(S) < 0 || S.energy < 1 || S.coins < E.spawnCost(S)) ? .55 : 1;
   if (E.canPrestige(S)){ br.className = 'main'; br.disabled = false; br.innerHTML = T('reedMain') + '<small>' + T('reedSub', { b: Math.round(C.editionBonus * 100) }) + '</small>'; }
   else { br.className = ''; br.innerHTML = T('restore', { r: REG(S.regions) }) + '<small>' + T('restoreSub', { rc: fmt(rc), m: C.regionMult }) + '</small>'; br.disabled = S.coins < rc; }
-  if (S.helper >= E.helperMax()){ bh.innerHTML = T('helperMax') + '<small>' + T('helperMaxSub') + '</small>'; bh.disabled = true; }
-  else { bh.innerHTML = (S.helper ? T('helperImprove') : T('helperHire')) + '<small>' + T('helperSub', { hc: fmt(hc) }) + '</small>'; bh.disabled = S.coins < hc; }
-  const bo = $('bHelperOn'); bo.hidden = S.helper < 1; bo.textContent = S.helperOn === false ? T('helperOffT') : T('helperOnT');
+  if (S.helper >= 1){ bh.innerHTML = T('helperMenuT') + '<small>' + (S.helperOn === false ? T('helperStOff') : T('helperStOn')) + ' · ' + T('lvl') + ' ' + S.helper + '/' + E.helperMax() + '</small>'; bh.disabled = false; }
+  else { bh.innerHTML = T('helperHire') + '<small>' + T('helperSub', { hc: fmt(hc) }) + '</small>'; bh.disabled = S.coins < hc; }
   $('edTxt').textContent = T('edTxt', { n: S.editions + 1 });
   muteIco();
   const q = $('quest'); q.hidden = S.tut < 3;
