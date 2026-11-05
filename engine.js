@@ -28,10 +28,10 @@
     helperCostBase: 500, helperCostGrowth: 9,
     pageBonus: 0.02, pageCap: 50,      // cada "pagina del atlas" (fusion de tier 10) da +5% de ingreso
     offlineCapSec: 8 * 3600,
-    energyMax: 30, energyRegen: 0.05,
+    energyMax: 50, energyRegen: 0.125,
     editionCostMult: 1.8, // cada edicion encarece las regiones x1.8 (el ingreso solo sube +50%)
     editionBonus: 0.5,    // cada edicion del atlas (prestigio) suma +50% de ingreso permanente
-    comboWindow: 4, comboStep: 0.25, comboMax: 8,   // fusiones seguidas en menos de 4 s suben el premio   // 1 energia cada 20 s; cada spawn gasta 1
+    comboWindow: 4, comboStep: 0.25, comboMax: 8,   // fusiones seguidas en menos de 4 s suben el premio   // 1 energia cada 8 s; cada spawn gasta 1
   };
 
   function mulberry32(a) {
@@ -45,7 +45,7 @@
 
   function newState(seed) {
     return {
-      coins: 20, energy: 30, editions: 0, combo: 0, comboT: 0, lastGain: 0, stats: { merges: 0, spawns: 0 }, board: new Array(CFG.cols * CFG.rows).fill(0),
+      coins: 20, energy: 50, editions: 0, combo: 0, comboT: 0, lastGain: 0, stats: { merges: 0, spawns: 0 }, board: new Array(CFG.cols * CFG.rows).fill(0),
       regions: 0, helper: 0, pages: 0, helperTimer: 0,
       boost: 0,            // segundos restantes de x2 (anuncio recompensado)
       seed: seed || 1, rngCalls: 0, totalEarned: 0, t: 0,

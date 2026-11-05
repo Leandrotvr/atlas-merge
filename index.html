@@ -652,7 +652,8 @@ function moveItem(src, dst){
 }
 function spawnOne(){
   if (E.emptyCell(S) < 0){ sfx.error(); return say(T('fullBoard')); }
-  if (S.energy < 1){ sfx.error(); return say(T('noEnergy')); }
+  if (S.energy < 1){ sfx.error(); say(T('noEnergy'));
+    showDialog({ title: T('rechT'), html: T('rechBody'), buttons: [{ label: T('rechBtn'), cls: 'main', fn: () => { S.energy = C.energyMax; sfx.quest(); } }, { label: T('rechLater') }] }); return; }
   const idx = E.emptyCell(S);
   if (!E.spawn(S)){ sfx.error(); return say(T('needCoins')); }
   sfx.spawn(); buzz(8); say(''); S.pop = idx; lastInput = Date.now(); checkQuest(); render(); save();
