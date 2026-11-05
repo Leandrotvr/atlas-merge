@@ -119,6 +119,13 @@ button:focus-visible,.cell:focus-visible{outline:3px solid var(--sea);outline-of
   .energywrap{grid-area:energy}.actions{grid-area:actions}.msg{grid-area:msg}.foot{grid-area:foot}
 }
 @media (prefers-reduced-motion:reduce){.pop,.pulse,.boardwrap.shake,.float,.dot,.reveal,.slot.next{animation:none}.toast{transition:none}}
+.path{flex:none;display:flex;flex-direction:column;gap:3px;align-items:stretch;background:rgba(10,20,34,.55);border-radius:12px;padding:5px 8px;color:#fff8e6}
+.path .row{display:flex;align-items:center;justify-content:space-between;gap:2px}
+.path .st{font-size:19px;line-height:1;filter:grayscale(1) opacity(.35);transition:filter .3s}
+.path .st.got{filter:none}.path .st.nx{filter:none;animation:glow 1.4s ease-in-out infinite}
+.path .goal{font-size:12.5px;font-weight:700;text-align:center;color:#ffd978}
+.path.reed{box-shadow:0 0 0 2px #e0a93a;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.path .st.nx{animation:none}}
 .tip{position:fixed;left:50%;transform:translateX(-50%);z-index:40;width:min(92vw,420px);box-sizing:border-box;background:linear-gradient(180deg,#1f3a52,#0f1c29);color:#fff8e6;border-radius:14px;padding:10px 14px;box-shadow:0 0 0 2px #e0a93a,0 6px 18px rgba(0,0,0,.45);font-size:16px;line-height:1.35;font-weight:600;display:flex;flex-direction:column;gap:6px}
 .tip[hidden],.hand[hidden]{display:none}
 .tip small{color:#ffd978;font-weight:800;font-size:12px}
@@ -383,6 +390,7 @@ body .iconbtn{min-height:0}
   <div class="energywrap"><div class="lbl"><span>⚡ Energía para explorar</span><span id="energyTxt"></span></div><div class="energy"><i id="energyBar"></i></div></div>
     <div class="coinchip lvlchip" id="lvlChip" aria-hidden="true">⭐ <b id="lvlTop">1</b></div><div class="coinchip" aria-hidden="true">🪙 <b id="coinsTop">0</b></div>
   </div>
+  <div class="path" id="path" role="group"><div class="row" id="pathRow"></div><div class="goal" id="pathGoal"></div></div>
   <div class="barea"><div class="boardwrap" id="boardwrap"><section class="board" id="board" aria-label="Tablero"></section><div class="fx" id="fx"></div><div class="ovl"><div class="combo" id="combo">Combo ×2</div><div class="boostchip" id="boostTxt"></div></div><div class="msg" id="msg"></div></div></div>
   <section class="actions">
     <button id="bSpawn" class="main"></button>
@@ -864,6 +872,20 @@ function updateCoach(){
   }
   tipSync();
 }
+/* camino de objetos: progreso lineal siempre visible */
+const pathEl = $('path'), pathRow = $('pathRow'), pathGoal = $('pathGoal');
+let pathSig = '';
+function pathSync(){
+  if (!pathEl) return;
+  const can = E.canPrestige(S), d = Math.min(S.disc, 10);
+  const sig = [setIdx, d, can, S.pages, I18N.lang].join('|');
+  if (sig === pathSig) return; pathSig = sig;
+  pathEl.setAttribute('aria-label', T('pathAria'));
+  pathRow.innerHTML = ICONS.slice(1).map((ic, i) => '<span class="st' + (i + 1 <= d ? ' got' : (i + 1 === d + 1 ? ' nx' : '')) + '">' + ic + '</span>').join('');
+  pathEl.classList.toggle('reed', can);
+  pathGoal.textContent = can ? T('pathReed') : d >= 10 ? T('pathTop', { top: ICONS[10] }) : T('pathNext', { item: ICONS[d + 1] + ' ' + NAMES[d + 1] });
+}
+pathEl.addEventListener('click', () => { if (E.canPrestige(S)) $('bRegion').onclick(); });
 /* burbuja de guia sobre el tablero (visible sin abrir el menu) */
 const tipEl = $('tip'), handEl = $('hand');
 function tipSync(){
@@ -1121,7 +1143,7 @@ function loop(){
   saveAcc += Math.min(el, 5);
   if (acc >= 0.25){
     goldTick(acc); msCheck();
-    E.advance(S, acc); acc = 0; tickUI(); tipSync(); checkDiscovery(); checkQuest();
+    E.advance(S, acc); acc = 0; tickUI(); tipSync(); pathSync(); checkDiscovery(); checkQuest();
     const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
