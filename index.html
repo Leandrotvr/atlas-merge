@@ -398,6 +398,7 @@ body .iconbtn{min-height:0}
     <button id="bSpawn" class="main"></button>
     <button id="bRegion"></button>
     <button id="bHelper"></button>
+    <button id="bHelperOn" class="tutbtn" type="button" hidden></button>
     <button id="bAd">Duplicar ingreso 60 s<small>Anuncio simulado (demo)</small></button>
   </section>
 </main>
@@ -978,6 +979,7 @@ $('bMute').onclick = () => {
 const modal = $('modal');
 applySet();
 $('bHelp').onclick = () => { modal.hidden = false; };
+$('bHelperOn').onclick = () => { audio(); S.helperOn = (S.helperOn === false); S.helperTimer = 0; say(S.helperOn === false ? T('helperOffMsg') : T('helperOnMsg')); render(); save(); };
 $('bTut').onclick = () => { audio(); modal.hidden = false; };
 function wirePanel(open, id, close){ const p = $(id); $(open).onclick = () => { p.hidden = false; updateCoach(); }; $(close).onclick = () => { p.hidden = true; }; p.addEventListener('click', e => { if (e.target === p) p.hidden = true; }); }
 wirePanel('bMenu', 'pMenu', 'menuClose');
@@ -1041,6 +1043,7 @@ function render(){
   else { br.className = ''; br.innerHTML = T('restore', { r: REG(S.regions) }) + '<small>' + T('restoreSub', { rc: fmt(rc), m: C.regionMult }) + '</small>'; br.disabled = S.coins < rc; }
   if (S.helper >= E.helperMax()){ bh.innerHTML = T('helperMax') + '<small>' + T('helperMaxSub') + '</small>'; bh.disabled = true; }
   else { bh.innerHTML = (S.helper ? T('helperImprove') : T('helperHire')) + '<small>' + T('helperSub', { hc: fmt(hc) }) + '</small>'; bh.disabled = S.coins < hc; }
+  const bo = $('bHelperOn'); bo.hidden = S.helper < 1; bo.textContent = S.helperOn === false ? T('helperOffT') : T('helperOnT');
   $('edTxt').textContent = T('edTxt', { n: S.editions + 1 });
   muteIco();
   const q = $('quest'); q.hidden = S.tut < 3;
@@ -1158,7 +1161,7 @@ function loop(){
   if (acc >= 0.25){
     goldTick(acc); msCheck();
     E.advance(S, acc); acc = 0; tickUI(); tipSync(); pathSync(); titleCheck(); checkDiscovery(); checkQuest();
-    const s2 = S.board.join() + '|' + S.regions + S.helper + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
+    const s2 = S.board.join() + '|' + S.regions + S.helper + (S.helperOn === false ? 'x' : 'o') + '|' + (S.coins >= E.regionCost(S)) + (S.coins >= E.helperCost(S)) + (S.coins >= E.spawnCost(S)) + Math.floor(S.energy) + '|' + S.q + '|' + S.editions;
     if (s2 !== sig){ sig = s2; render(); }
     const idle = (Date.now() - lastInput) / 1000, pair = E.findPair(S), want = idle > 7 && !!pair && S.tut >= 2 && !dlgOpen;
     if (want !== hintOn){ hintOn = want; [...boardEl.children].forEach(c => c.classList.remove('pulse')); if (want) pair.forEach(i => boardEl.children[i].classList.add('pulse')); }

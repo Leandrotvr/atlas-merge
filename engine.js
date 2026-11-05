@@ -153,7 +153,7 @@
       if (s.boost > 0) s.boost = Math.max(0, s.boost - d);
       if (s.comboT > 0) { s.comboT = Math.max(0, s.comboT - d); if (!s.comboT) s.combo = 0; }
       const iv = CFG.helperIntervals[s.helper];
-      if (iv > 0) {
+      if (iv > 0 && s.helperOn !== false) {
         s.helperTimer += d;
         while (s.helperTimer >= iv) { s.helperTimer -= iv; if (!helperAct(s)) { s.helperTimer = 0; break; } }
       }
@@ -174,7 +174,7 @@
     if (s.boost > 0) s.boost = Math.max(0, s.boost - d);
     s.comboT = 0; s.combo = 0;
     const iv = CFG.helperIntervals[s.helper];
-    if (iv > 0) {
+    if (iv > 0 && s.helperOn !== false) {
       s.helperTimer += d;
       let guard = 0;
       while (s.helperTimer >= iv && guard++ < 50) { s.helperTimer -= iv; if (!helperAct(s)) { s.helperTimer = 0; break; } }
