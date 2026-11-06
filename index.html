@@ -528,7 +528,7 @@ function fmt(n){
   return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + u[i];
 }
 function fmtTime(s){ return s >= 3600 ? (s/3600).toFixed(1).replace('.', T('dec')) + ' ' + T('hUnit') : Math.max(1, Math.round(s/60)) + ' ' + T('minUnit'); }
-function say(t){ $('msg').textContent = t; }
+function say(t){ const m = $('msg'); m.textContent = t; clearTimeout(say.t); if (t) say.t = setTimeout(() => { m.textContent = ''; }, 3500); }
 function save(){ if (window.__noSave) return; try{ S.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 /* ---------- sonido y vibracion ---------- */
